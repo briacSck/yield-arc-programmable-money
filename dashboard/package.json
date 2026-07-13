@@ -1,0 +1,16 @@
+{
+  "name": "@yield/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Live decision log + explorer links. Next.js on Railway (pattern-match yield-frontend). Full UI deferred; the API-route contract is pinned here.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@yield/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

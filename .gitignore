@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+
+# Env & secrets — NEVER commit (invariant #6, §15.5)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# Contracts / Hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# Logs & local runtime state
+*.log
+event-log.jsonl
+.DS_Store
+
+# ─────────────────────────────────────────────────────────────
+# Internal working docs — LOCAL ONLY, never pushed to the public repo.
+# They carry pilot names, regulatory strategy, personal contacts,
+# and live URLs/addresses. See plan §12 (regulatory firewall).
+# ─────────────────────────────────────────────────────────────
+AGENTS.md
+docs/NOW.md
+docs/PLAN.md

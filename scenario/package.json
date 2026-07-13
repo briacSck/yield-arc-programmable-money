@@ -1,0 +1,21 @@
+{
+  "name": "@yield/scenario",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Seeded French-SME ledger + simulated-clock demo driver. 90 days in ~90s, replayable, deterministic. Plan §11 / §16.5.",
+  "bin": {
+    "scenario": "./src/run.ts"
+  },
+  "scripts": {
+    "start": "tsx src/run.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@yield/shared": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

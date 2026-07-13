@@ -1,0 +1,17 @@
+{
+  "name": "@yield/forecast",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic baseline cash forecast (P10/P50/P90), plan §16.4. Upgrades to the t0 model service behind the same ForecastResult contract.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@yield/shared": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,30 @@
+name: arc-verify
+
+# Real-EVM proof of the Arc contracts. Adapted from yield-backend
+# (feat/arc-sprint-identity, 1dc5e88): the original's backend/integration jobs were
+# NestJS/Prisma/jest-specific and dropped here; the contracts job — the one that turns
+# "compiles + mocked tests pass" into "the on-chain covenant is proven" — is kept and now
+# also covers AgentMandate. Runs on x64 Linux, where Hardhat's native deps (solidity-analyzer,
+# edr) have builds, unlike the win32-arm64 dev machine.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  # Compile + run all contract tests: SweepEscrow (incl. the P0 covenant revert) and the
+  # AgentMandate owner-admin suite (its risk cases are it.skip until implemented, §17.7).
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: npx hardhat compile
+      - run: npx hardhat test
