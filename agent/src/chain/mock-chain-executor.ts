@@ -24,7 +24,7 @@ export class MockChainExecutor implements ChainExecutor {
     const identitySig = '0x' + createHash('sha256').update(`sig:${decision.id}`).digest('hex');
     return {
       txHash,
-      explorerUrl: `https://explorer.arc.network/tx/${txHash}`,
+      explorerUrl: `https://testnet.arcscan.app/tx/${txHash}`,
       identitySig,
       receiptHash: decision.forecastInputsHash,
     };

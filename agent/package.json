@@ -9,6 +9,7 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "@yield/shared": "*",
     "viem": "^2.21.0"
   },
