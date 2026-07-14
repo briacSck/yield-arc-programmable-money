@@ -50,10 +50,17 @@ export type Decision = z.infer<typeof Decision>;
 /**
  * Decision-rule configuration — plan §16.3. Config, not code: the rule is fixed, these knobs are
  * per-deployment. All monetary knobs are USDC base-unit strings, consistent with `Decision`.
+ *
+ * `maxTicketUsdc` / `dailyCapRemainingUsdc` (optional, additive — team-agreed 2026-07-15) mirror
+ * the on-chain mandate caps into the engine: a DEPLOY is clamped to
+ * `min(surplus, maxTicket, dailyCapRemaining)` so the engine can never propose a transaction the
+ * contract will revert. The scheduler reads both live from the mandate each cycle.
  */
 export const DecisionConfig = z.object({
   userMinUsdc: UsdcBaseUnits,
   minTicketUsdc: UsdcBaseUnits,
   horizonDays: z.number().int().positive().default(30),
+  maxTicketUsdc: UsdcBaseUnits.optional(),
+  dailyCapRemainingUsdc: UsdcBaseUnits.optional(),
 });
 export type DecisionConfig = z.infer<typeof DecisionConfig>;

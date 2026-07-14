@@ -168,7 +168,7 @@ test('WITHDRAW wins over DEPLOY when P10 projects a breach', () => {
   assert.match(d.reason, /pulling funds back/);
 });
 
-test('projected breach with nothing deployed → HOLD, never WITHDRAW "0"', () => {
+test('risk-off season: projected dip with nothing deployed → HOLD, never deploy INTO a crunch', () => {
   const d = decide(
     baseInput({
       deployedUsdc: '0',
@@ -179,7 +179,57 @@ test('projected breach with nothing deployed → HOLD, never WITHDRAW "0"', () =
     }),
   );
   assert.equal(d.kind, 'HOLD');
-  assert.match(d.reason, /nothing is deployed to recover/);
+  assert.match(d.reason, /risk-off/);
+});
+
+test('cold-start bootstrap: DEPLOY fires when the P10 tail clears the floor (risk-on season)', () => {
+  const d = decide(baseInput({ deployedUsdc: '0' }));
+  // baseInput: floor 90k, p10 95k ≥ floor ⇒ risk-on ⇒ DEPLOY 5k from a cold start.
+  assert.equal(d.kind, 'DEPLOY');
+  assert.equal(d.amountUsdc, U(5_000));
+});
+
+test('never WITHDRAW when nothing is deployed (property)', () => {
+  fc.assert(
+    fc.property(inputArb(NOW, FRESH_ASOF), (input) => {
+      const d = decide({ ...input, deployedUsdc: '0' });
+      return d.kind !== 'WITHDRAW';
+    }),
+    { numRuns: 300 },
+  );
+});
+
+test('DEPLOY clamps to mandate caps and never exceeds maxTicket or the daily budget (property)', () => {
+  fc.assert(
+    fc.property(inputArb(NOW, FRESH_ASOF), (input) => {
+      const maxTicket = 2_000_000n;
+      const dailyRemaining = 3_500_000n;
+      const d = decide({
+        ...input,
+        config: { ...input.config, maxTicketUsdc: maxTicket.toString(), dailyCapRemainingUsdc: dailyRemaining.toString() },
+      });
+      if (d.kind !== 'DEPLOY') return true;
+      return BigInt(d.amountUsdc) <= maxTicket && BigInt(d.amountUsdc) <= dailyRemaining;
+    }),
+    { numRuns: 300 },
+  );
+});
+
+test('surplus above caps but clamp below min ticket → HOLD (waiting for the budget window)', () => {
+  const d = decide(
+    baseInput({
+      config: {
+        userMinUsdc: '0',
+        minTicketUsdc: U(1_000),
+        horizonDays: 30,
+        maxTicketUsdc: U(10_000),
+        dailyCapRemainingUsdc: U(500), // window nearly exhausted
+      },
+    }),
+  );
+  // surplus 5k exists, but only 500 remains in the window < 1k min ticket.
+  assert.equal(d.kind, 'HOLD');
+  assert.match(d.reason, /budget window/);
 });
 
 test('surplus below min ticket → HOLD', () => {

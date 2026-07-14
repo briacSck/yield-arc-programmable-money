@@ -107,32 +107,50 @@ export function decide(input: DecideInput): Decision {
     return finish('HOLD', 0n, 'HOLD: no forecast points fall inside the guard window — cannot assess the P10 tail.');
   }
 
-  // ── WITHDRAW wins over DEPLOY: moving toward safety has priority ──
+  // ── The dip predicate partitions the seasons (anti-oscillation, team-agreed 2026-07-15):
+  // P10 below floor ⇒ RISK-OFF season — withdraw if there is anything to recall, otherwise hold
+  // (never deploy INTO a projected dip; the next cycle would just recall it — ping-pong).
+  // P10 at/above floor ⇒ RISK-ON season — the deploy branch below runs. Flips happen only at
+  // season transitions, not every cycle.
   if (minP10Withdraw < safeFloor) {
     const shortfall = safeFloor - minP10Withdraw;
-    const amount = bmin(shortfall, deployed);
-    if (amount === 0n) {
+    if (deployed > 0n) {
+      const amount = bmin(shortfall, deployed);
       return finish(
-        'HOLD',
-        0n,
-        `HOLD: P10 projects a floor breach of ${formatUsdc(shortfall)} within ${withdrawWindowDays}d but nothing is deployed to recover.`,
+        'WITHDRAW',
+        amount,
+        `WITHDRAW ${formatUsdc(amount)}: P10 projects the balance ${formatUsdc(shortfall)} below the safe floor of ${formatUsdc(safeFloor)} within ${withdrawWindowDays}d — pulling funds back ahead of the crunch.`,
       );
     }
     return finish(
-      'WITHDRAW',
-      amount,
-      `WITHDRAW ${formatUsdc(amount)}: P10 projects the balance ${formatUsdc(shortfall)} below the safe floor of ${formatUsdc(safeFloor)} within ${withdrawWindowDays}d — pulling funds back ahead of the crunch.`,
+      'HOLD',
+      0n,
+      `HOLD: P10 projects a dip ${formatUsdc(shortfall)} below the safe floor within ${withdrawWindowDays}d — risk-off, not deploying into a projected crunch (nothing deployed to recall).`,
     );
   }
 
-  // ── DEPLOY: only the surplus above both the floor and the P10 tail ──
+  // ── DEPLOY: the surplus above both the floor and the P10 tail, clamped to the mandate caps
+  // (the engine must never propose a transaction the contract will revert) ──
   const guard = bmax(safeFloor, minP10Deploy);
   const surplus = balance > guard ? balance - guard : 0n;
-  if (surplus > 0n && surplus >= BigInt(config.minTicketUsdc)) {
+  let deployable = surplus;
+  if (config.maxTicketUsdc !== undefined) deployable = bmin(deployable, BigInt(config.maxTicketUsdc));
+  if (config.dailyCapRemainingUsdc !== undefined) {
+    deployable = bmin(deployable, BigInt(config.dailyCapRemainingUsdc));
+  }
+  if (surplus > 0n && deployable !== surplus && deployable < BigInt(config.minTicketUsdc)) {
+    return finish(
+      'HOLD',
+      0n,
+      `HOLD: ${formatUsdc(surplus)} surplus exists but the mandate caps allow only ${formatUsdc(deployable)} today (below the ${formatUsdc(BigInt(config.minTicketUsdc))} min ticket) — waiting for the budget window.`,
+    );
+  }
+  if (deployable > 0n && deployable >= BigInt(config.minTicketUsdc)) {
+    const clampNote = deployable < surplus ? ` (clamped from ${formatUsdc(surplus)} by mandate caps)` : '';
     return finish(
       'DEPLOY',
-      surplus,
-      `DEPLOY ${formatUsdc(surplus)}: balance ${formatUsdc(balance)} exceeds max(safe floor ${formatUsdc(safeFloor)}, ${deployWindowDays}d P10 low ${formatUsdc(minP10Deploy)}) — sweeping surplus into yield.`,
+      deployable,
+      `DEPLOY ${formatUsdc(deployable)}: balance ${formatUsdc(balance)} exceeds max(safe floor ${formatUsdc(safeFloor)}, ${deployWindowDays}d P10 low ${formatUsdc(minP10Deploy)}) — sweeping surplus into yield${clampNote}.`,
     );
   }
 

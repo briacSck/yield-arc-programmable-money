@@ -22,21 +22,46 @@ export class EventLog {
   /** Validates against the pinned schema, assigns the next seq, appends one JSONL line. */
   append(record: Omit<EventLogRecord, 'seq'>): EventLogRecord {
     const full = EventLogRecord.parse({ ...record, seq: this.nextSeq });
-    appendFileSync(this.filePath, `${JSON.stringify(full)}\n`, 'utf8');
+    // Fresh-line guard: if the previous append was torn (container killed mid-write), start on a
+    // new line so ONLY the torn line is lost, not this record too.
+    let prefix = '';
+    if (existsSync(this.filePath)) {
+      const raw = readFileSync(this.filePath, 'utf8');
+      if (raw.length > 0 && !raw.endsWith('\n')) prefix = '\n';
+    }
+    appendFileSync(this.filePath, `${prefix}${JSON.stringify(full)}\n`, 'utf8');
     this.nextSeq += 1;
     return full;
   }
 
-  private readTailSeq(): number {
-    if (!existsSync(this.filePath)) return -1;
-    const lines = readFileSync(this.filePath, 'utf8').split('\n').filter((l) => l.trim().length > 0);
-    const last = lines[lines.length - 1];
-    if (!last) return -1;
-    try {
-      const parsed = EventLogRecord.parse(JSON.parse(last));
-      return parsed.seq;
-    } catch {
-      return lines.length - 1; // corrupt tail: fall back to line count so seq still moves forward
+  /** All valid records (torn/corrupt lines skipped — a redeploy kill mid-append must not brick the reader). */
+  readAll(): EventLogRecord[] {
+    if (!existsSync(this.filePath)) return [];
+    const records: EventLogRecord[] = [];
+    for (const line of readFileSync(this.filePath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        records.push(EventLogRecord.parse(JSON.parse(trimmed)));
+      } catch {
+        continue;
+      }
     }
+    return records;
+  }
+
+  /** loggedAt of the most recent CONFIRMED money move (cooldown anchor), or null. */
+  lastConfirmedMoveAt(): string | null {
+    const records = this.readAll();
+    for (let i = records.length - 1; i >= 0; i--) {
+      if (records[i]!.status === 'CONFIRMED') return records[i]!.loggedAt;
+    }
+    return null;
+  }
+
+  private readTailSeq(): number {
+    const records = this.readAll();
+    const last = records[records.length - 1];
+    return last ? last.seq : -1; // seq recovery counts VALID records only (eng review #9)
   }
 }
