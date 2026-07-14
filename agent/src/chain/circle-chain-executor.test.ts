@@ -129,6 +129,16 @@ describe('CircleChainExecutor', () => {
     await first;
   });
 
+  it('on-chain decisionId is wall-clock-independent: same forecast+kind collide across cycles', () => {
+    const a = decision({ id: 'cycle-1', ts: '2026-07-14T12:00:00Z' });
+    const b = decision({ id: 'cycle-2', ts: '2026-07-14T13:00:00Z' }); // retry/next poll, same forecast
+    assert.equal(onChainDecisionId(a), onChainDecisionId(b));
+    const c = decision({ kind: 'WITHDRAW' });
+    assert.notEqual(onChainDecisionId(a), onChainDecisionId(c)); // different action ⇒ different id
+    const d = decision({ forecastInputsHash: `0x${'ef'.repeat(32)}` });
+    assert.notEqual(onChainDecisionId(a), onChainDecisionId(d)); // new forecast ⇒ new id
+  });
+
   it('derives a deterministic, RFC-shaped idempotency key from the decision id', () => {
     const k1 = idempotencyKeyFor('d-1');
     assert.equal(k1, idempotencyKeyFor('d-1'));

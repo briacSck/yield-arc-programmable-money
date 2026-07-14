@@ -56,9 +56,17 @@ export function idempotencyKeyFor(decisionId: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
-/** On-chain decisionId (§17.2): bytes32 the contract uses for replay rejection. */
+/**
+ * On-chain decisionId (§17.2): bytes32 the contract uses for replay rejection.
+ *
+ * Derivation is `keccak(forecastInputsHash ‖ kind)` — deliberately INDEPENDENT of wall-clock time
+ * and of the app-level `decision.id` (which includes `now`). The forecast's `asOf` is already
+ * committed inside `inputsHash`, so: same forecast snapshot + same action ⇒ same on-chain id ⇒
+ * a retried or re-polled decision COLLIDES on the contract's `DuplicateDecision` guard instead of
+ * double-spending. A new cycle produces a new forecast (new asOf ⇒ new inputsHash) ⇒ new id.
+ */
 export function onChainDecisionId(decision: Decision): `0x${string}` {
-  return keccak256(toBytes(`${decision.forecastInputsHash}|${decision.id}`));
+  return keccak256(toBytes(`${decision.forecastInputsHash}|${decision.kind}`));
 }
 
 export class CircleChainExecutor implements ChainExecutor {
@@ -126,6 +134,7 @@ export class CircleChainExecutor implements ChainExecutor {
 
   private async pollToTerminal(txId: string, decisionId: string): Promise<`0x${string}`> {
     const startedAt = Date.now();
+    let finalRecheck = false;
     for (;;) {
       const res = await this.sdk.getTransaction({ id: txId });
       const tx = res.data?.transaction;
@@ -140,7 +149,13 @@ export class CircleChainExecutor implements ChainExecutor {
         );
       }
       if (Date.now() - startedAt > this.cfg.timeoutMs) {
-        throw new Error(`CircleChainExecutor: tx ${txId} stuck (last state ${state}) — HOLD + alert (§17.6).`);
+        // One final re-query before declaring the tx stuck: a slow-but-successful tx must be
+        // recovered here, not re-submitted by a later cycle (eng review #15). The on-chain
+        // decisionId collision is the backstop if it lands even later.
+        if (finalRecheck) {
+          throw new Error(`CircleChainExecutor: tx ${txId} stuck (last state ${state}) — HOLD + alert (§17.6).`);
+        }
+        finalRecheck = true;
       }
       await new Promise((r) => setTimeout(r, this.cfg.pollIntervalMs));
     }

@@ -4,11 +4,21 @@
   "private": true,
   "type": "module",
   "description": "Deterministic baseline cash forecast (P10/P50/P90), plan §16.4. Upgrades to the t0 model service behind the same ForecastResult contract.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@yield/shared": "*"
+    "@yield/shared": "*",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

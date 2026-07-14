@@ -30,8 +30,10 @@ export type Exposure = z.infer<typeof Exposure>;
  *
  * `forecastInputsHash` is copied from the `ForecastResult.inputsHash` the agent acted on; it
  * becomes the on-chain **decision receipt** (`forecastHash` in `DecisionExecuted`, §17.2), so
- * anyone can replay *why* the agent moved money. `id` is the app-level decision id; the chain
- * layer derives the on-chain `decisionId = keccak(inputsHash ‖ window)` for idempotency (§17.2).
+ * anyone can replay *why* the agent moved money. `id` is the app-level decision id (includes the
+ * cycle clock); the chain layer derives the on-chain `decisionId = keccak(inputsHash ‖ kind)` —
+ * wall-clock-independent, so retries collide on the contract's replay guard (§17.2). The forecast
+ * snapshot's `asOf` is committed inside `inputsHash`.
  */
 export const Decision = z.object({
   id: z.string().min(1),

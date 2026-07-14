@@ -37,10 +37,12 @@ export const HexBytes = z
 /**
  * A USDC amount expressed in **integer base units, as a decimal string** — never a JS number.
  *
- * Base units follow the chain's native-currency decimals (`ARC_NATIVE_DECIMALS`: 18 on the real
- * Arc testnet, 6 in CI). A string of integer base units maps 1:1 onto the contract's `uint256`
- * and avoids float error entirely — non-negotiable for a system whose core invariant is
- * "the floor is never breached." Convert at the display edge only, never in decision math.
+ * The single basis is **6-decimal USDC base units** (Arc's USDC ERC-20 canonical decimals) across
+ * the entire seam: forecasts, decisions, the executor, and `AgentMandate`'s pools all use it, and
+ * it maps 1:1 onto the contract's `uint256`. Arc's 18-dec NATIVE accounting is converted at the
+ * contract's native-value boundaries only (`SCALE = 1e12`), never in decision math. Strings of
+ * integer base units avoid float error entirely — non-negotiable for a system whose core
+ * invariant is "the floor is never breached." Convert at the display edge only.
  */
 export const UsdcBaseUnits = z
   .string()

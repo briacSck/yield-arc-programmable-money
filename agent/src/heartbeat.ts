@@ -7,7 +7,8 @@ export async function ping(env: NodeJS.ProcessEnv = process.env): Promise<void> 
   const url = env.HEARTBEAT_URL;
   if (!url) return; // no monitor configured (e.g. local dev) — silently skip.
   try {
-    await fetch(url, { method: 'POST' });
+    // Hard 5s timeout: the liveness probe must never hang the loop it exists to protect.
+    await fetch(url, { method: 'POST', signal: AbortSignal.timeout(5_000) });
   } catch {
     // Never let a monitoring failure crash a cycle; the missed-ping alert is the signal.
   }
