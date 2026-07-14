@@ -29,11 +29,11 @@ event-log.jsonl
 .DS_Store
 
 # ─────────────────────────────────────────────────────────────
-# Internal working docs — LOCAL ONLY, never pushed to the public repo.
-# They carry pilot names, regulatory strategy, personal contacts,
-# and live URLs/addresses. See plan §12 (regulatory firewall).
+# Internal strategy doc — LOCAL ONLY, never pushed to the public repo.
+# It carries pilot names, regulatory strategy, personal contacts and
+# competitive analysis. See plan §12 (regulatory firewall).
+# AGENTS.md + docs/NOW.md are COMMITTED on purpose: they carry the team's
+# shared agent bootstrap + build state, and must stay strategy-free.
 # ─────────────────────────────────────────────────────────────
-AGENTS.md
-docs/NOW.md
 docs/PLAN.md
 .gstack/
