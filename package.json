@@ -17,7 +17,8 @@
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "node scripts/railway-build.mjs",
+    "start": "node scripts/railway-start.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0"
