@@ -35,12 +35,19 @@ forecast hash each decision acted on, committed on-chain).
 | `forecast` | `baselineForecast()` (§16.4): deterministic, rational-k bands, canonical `inputsHash`. The t0 model service swaps in later behind `modelId` |
 | `scenario` | Seeded "Boulangerie Chartier" ledger + simulated clock (demo driver) |
 | `dashboard` | Next.js; reads ONE API route backed by the event log, nothing else |
+| `verifier` *(W2, in progress)* | Judge-runnable CLI (`npx -y @yield-cfo/mandate-verify`): two-layer — fetch (chain → NormalizedEvent[]) + PURE replay core that machine-checks the 5 mandate invariants over full history. Fixtures (JSON event streams) test BOTH directions: violating histories the verifier must catch AND compliant-adversarial histories it must NOT flag (false VIOLATIONs are the dominant failure mode — invariant 3 is an EXACT replay of the contract's lazy tumbling window, never a naive rolling 24h sum). Verdicts publish via nightly CI → `audit-log` git ref → dashboard proxy splice. Zero coupling to the worker except one additive read-only route |
 
 ## Live state
 
 Addresses, tx links, current targets and blockers live in **`docs/NOW.md`** — read it FIRST every
 session; update it in the same PR as any state-changing work. **Do not start a task not listed in
-NOW.md without asking.**
+NOW.md without asking.** Deferred/gated work is tracked in `TODOS.md` — don't silently pick items
+from it; they're deferred on purpose.
+
+**The deployed worker is live and trading.** "Untouchable" = the scheduler / decision engine /
+executor path — do not modify money-moving code without Briac's explicit go. The worker's HTTP
+surface (`agent/src/server.ts`) MAY gain additive read-only routes (that's the sanctioned seam);
+any worker redeploy restarts the loop (it's restart-safe by design, but coordinate).
 
 ## Commands
 
