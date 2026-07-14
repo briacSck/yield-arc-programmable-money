@@ -145,8 +145,9 @@ export async function runCycle(deps: CycleDeps): Promise<EventLogRecord> {
   }
 
   const written = deps.log.append(record);
-  if (gasExhausted && deps.pingFail) {
-    await deps.pingFail();
+  if (gasExhausted) {
+    // Default to the real /fail ping — a gas-dead agent must never look green.
+    await (deps.pingFail ? deps.pingFail() : (await import('./heartbeat.js')).pingFail());
   } else {
     await (deps.ping ? deps.ping() : (await import('./heartbeat.js')).ping());
   }

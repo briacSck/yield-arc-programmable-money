@@ -13,3 +13,18 @@ export async function ping(env: NodeJS.ProcessEnv = process.env): Promise<void> 
     // Never let a monitoring failure crash a cycle; the missed-ping alert is the signal.
   }
 }
+
+/**
+ * Explicit FAILURE ping (healthchecks.io convention: POST <url>/fail) — flips the check to
+ * "down" immediately instead of waiting out the grace period. Used for gas exhaustion: a
+ * gas-dead agent must never look green.
+ */
+export async function pingFail(env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  const url = env.HEARTBEAT_URL;
+  if (!url) return;
+  try {
+    await fetch(`${url.replace(/\/$/, '')}/fail`, { method: 'POST', signal: AbortSignal.timeout(5_000) });
+  } catch {
+    /* same rule: monitoring failures never crash a cycle */
+  }
+}
