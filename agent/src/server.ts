@@ -12,11 +12,24 @@ import type { ForecastStore } from './forecast-store.js';
  *   GET /health          → CONTENT-based status (freshness alone lies: a FAILED storm or a
  *                          gas-dead agent still writes fresh records — eng review #12)
  */
+export interface MandateSnapshot {
+  companyBalanceUsdc: string;
+  deployedUsdc: string;
+  floorUsdc: string;
+  maxTicketUsdc: string;
+  dailyCapUsdc: string;
+  windowDeployedUsdc: string;
+  revoked: boolean;
+  agentGasWei: string;
+}
+
 export interface WorkerServerContext {
   env: NodeJS.ProcessEnv;
   log: EventLog;
   forecastStore: ForecastStore;
   cycleIntervalMs: number;
+  /** Live mandate reads (cached by the caller); null when no mandate is configured. */
+  readMandate?: () => Promise<MandateSnapshot | null>;
 }
 
 export function computeStats(records: EventLogRecord[]) {
@@ -55,18 +68,27 @@ export function startWorkerServer(port: number, ctx: WorkerServerContext): () =>
       if (url.pathname === '/events') {
         const limit = Math.min(Number(url.searchParams.get('limit') || 200), 1000);
         const records = ctx.log.readAll();
-        const body = {
-          agentAddress: ctx.env.AGENT_ADDRESS ?? '',
-          identityRegistry: ctx.env.IDENTITY_REGISTRY_ADDRESS ?? '',
-          mandateAddress: ctx.env.AGENT_MANDATE_ADDRESS ?? '',
-          agentIdentityId: ctx.env.AGENT_IDENTITY_ID ?? '',
-          schedulerMode: ctx.env.SCHEDULER_MODE === 'trade' ? 'trade' : 'observe',
-          stats: computeStats(records),
-          latestForecast: ctx.forecastStore.latest(),
-          events: records.slice(-limit),
-        };
-        res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify(body));
+        void (async () => {
+          let mandate: MandateSnapshot | null = null;
+          try {
+            mandate = ctx.readMandate ? await ctx.readMandate() : null;
+          } catch {
+            mandate = null; // soft-fail: RPC flakiness must never break the feed (design spec #4)
+          }
+          const body = {
+            agentAddress: ctx.env.AGENT_ADDRESS ?? '',
+            identityRegistry: ctx.env.IDENTITY_REGISTRY_ADDRESS ?? '',
+            mandateAddress: ctx.env.AGENT_MANDATE_ADDRESS ?? '',
+            agentIdentityId: ctx.env.AGENT_IDENTITY_ID ?? '',
+            schedulerMode: ctx.env.SCHEDULER_MODE === 'trade' ? 'trade' : 'observe',
+            stats: computeStats(records),
+            mandate,
+            latestForecast: ctx.forecastStore.latest(),
+            events: records.slice(-limit),
+          };
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(body));
+        })();
         return;
       }
       if (url.pathname === '/health') {

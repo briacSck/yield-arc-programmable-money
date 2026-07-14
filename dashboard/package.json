@@ -2,15 +2,22 @@
   "name": "@yield/dashboard",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "description": "Live decision log + explorer links. Next.js on Railway (pattern-match yield-frontend). Full UI deferred; the API-route contract is pinned here.",
+  "description": "Judge-facing live surface: claim strip, forecast cone (hero), decision log, mandate panel, uptime strip. Proxies the worker's internal /events — no chain reads, no volume.",
   "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@yield/shared": "*"
+    "@yield/shared": "*",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "typescript": "^5.6.3"
   }
 }

@@ -149,8 +149,56 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
   };
 }
 
+/** Cached (15 s) mandate snapshot reader for the worker HTTP surface — one shared client, soft-fail. */
+export function makeMandateReader(env: NodeJS.ProcessEnv = process.env) {
+  const mandateAddress = env.AGENT_MANDATE_ADDRESS as `0x${string}` | undefined;
+  const agentAddress = env.AGENT_ADDRESS as `0x${string}` | undefined;
+  if (!mandateAddress) return async () => null;
+  let cache: { at: number; value: Awaited<ReturnType<typeof readOnce>> } | null = null;
+  const readOnce = async () => {
+    const client = arcClient(env);
+    const read = <T>(functionName: string) =>
+      client.readContract({ address: mandateAddress, abi: MANDATE_ABI, functionName: functionName as never }) as Promise<T>;
+    const [company, deployed, floor, ticket, cap, windowDeployed, revoked, gas] = await Promise.all([
+      read<bigint>('companyBalance'),
+      read<bigint>('deployedBalance'),
+      read<bigint>('floorUsdc'),
+      read<bigint>('maxTicketUsdc'),
+      read<bigint>('dailyCapUsdc'),
+      read<bigint>('windowDeployed'),
+      read<boolean>('revoked'),
+      agentAddress ? client.getBalance({ address: agentAddress }) : Promise.resolve(0n),
+    ]);
+    return {
+      companyBalanceUsdc: company.toString(),
+      deployedUsdc: deployed.toString(),
+      floorUsdc: floor.toString(),
+      maxTicketUsdc: ticket.toString(),
+      dailyCapUsdc: cap.toString(),
+      windowDeployedUsdc: windowDeployed.toString(),
+      revoked,
+      agentGasWei: gas.toString(),
+    };
+  };
+  return async () => {
+    if (cache && Date.now() - cache.at < 15_000) return cache.value;
+    const value = await readOnce();
+    cache = { at: Date.now(), value };
+    return value;
+  };
+}
+
 // Entrypoint: `npm start --workspace agent` (Railway worker service).
 if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) {
+  // Local runs load the repo-root .env; Railway injects vars directly (no file — both fine).
+  for (const candidate of ['.env', '../.env']) {
+    try {
+      process.loadEnvFile(path.resolve(process.cwd(), candidate));
+      break;
+    } catch {
+      /* not found — try next / rely on platform env */
+    }
+  }
   const intervalMs = Number(process.env.CYCLE_INTERVAL_MS || 60 * 60 * 1000);
   const mode = process.env.SCHEDULER_MODE === 'trade' ? 'trade' : 'observe';
   console.log(`[agent] starting scheduler: mode=${mode}, interval=${intervalMs}ms`);
@@ -163,6 +211,7 @@ if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1])))
       log: deps.log,
       forecastStore: deps.forecastStore!,
       cycleIntervalMs: intervalMs,
+      readMandate: makeMandateReader(process.env),
     });
   }
 }

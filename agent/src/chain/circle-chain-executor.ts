@@ -45,6 +45,23 @@ export interface CircleChainExecutorConfig {
 
 const TERMINAL_OK = new Set(['CONFIRMED', 'COMPLETE']);
 const TERMINAL_BAD = new Set(['FAILED', 'DENIED', 'CANCELLED']);
+
+/**
+ * api.circle.com intermittently resets the FIRST connection from a fresh process. One retry after
+ * a short pause is safe on every call we make: submits carry a deterministic idempotency key
+ * (Circle dedupes server-side) and the rest are reads/signatures with no on-chain effect.
+ */
+async function withConnectRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const msg = (err as { code?: string; message?: string });
+    const transient = msg.code === 'ECONNRESET' || /socket hang up|ECONNRESET/i.test(msg.message ?? '');
+    if (!transient) throw err;
+    await new Promise((r) => setTimeout(r, 750));
+    return fn();
+  }
+}
 const ABI_BY_KIND: Record<'DEPLOY' | 'WITHDRAW', string> = {
   DEPLOY: 'deposit(uint256,bytes32,bytes32)',
   WITHDRAW: 'withdrawToCompany(uint256,bytes32,bytes32)',
@@ -100,22 +117,27 @@ export class CircleChainExecutor implements ChainExecutor {
       const decisionId = onChainDecisionId(decision);
 
       // The agent's ERC-8004-verifiable signature over what it is about to do and why.
-      const signed = await this.sdk.signMessage({
-        walletId: this.cfg.walletId,
-        message: `${decisionId}:${decision.forecastInputsHash}`,
-      });
+      const signed = await withConnectRetry(() =>
+        this.sdk.signMessage({
+          walletId: this.cfg.walletId,
+          message: `${decisionId}:${decision.forecastInputsHash}`,
+        }),
+      );
       const identitySig = signed.data?.signature;
       if (!identitySig) throw new Error('CircleChainExecutor: signMessage returned no signature');
 
-      const submitted = await this.sdk.createContractExecutionTransaction({
-        walletId: this.cfg.walletId,
-        contractAddress: this.cfg.mandateAddress,
-        abiFunctionSignature: ABI_BY_KIND[decision.kind],
-        abiParameters: [decision.amountUsdc, decisionId, decision.forecastInputsHash],
-        fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
-        idempotencyKey: idempotencyKeyFor(decision.id),
-        refId: decision.id,
-      });
+      const abiFunctionSignature = ABI_BY_KIND[decision.kind as 'DEPLOY' | 'WITHDRAW'];
+      const submitted = await withConnectRetry(() =>
+        this.sdk.createContractExecutionTransaction({
+          walletId: this.cfg.walletId,
+          contractAddress: this.cfg.mandateAddress,
+          abiFunctionSignature,
+          abiParameters: [decision.amountUsdc, decisionId, decision.forecastInputsHash],
+          fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+          idempotencyKey: idempotencyKeyFor(decision.id),
+          refId: decision.id,
+        }),
+      );
       const txId = submitted.data?.id;
       if (!txId) throw new Error('CircleChainExecutor: submit returned no transaction id');
 

@@ -1,0 +1,334 @@
+/* YIELD dashboard — editorial fintech paper (tokens pinned from yield-frontend, team-agreed). */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+
+:root {
+  --paper: #f4f1eb;
+  --surface: #fbfaf7;
+  --canvas: #ffffff;
+  --ink: #14130f;
+  --ink-2: #2a2823;
+  --mute: #847e72;
+  --mute-2: #b5afa1;
+  --line: #e6dfd2;
+  --line-2: #efeae0;
+  --accent: #2a5547; /* deep sage */
+  --accent-bg: #e4ece6;
+  --warn: #8b6f2e;
+  --warn-bg: #f1e9d6;
+  --neg: #8b3a3a;
+  --neg-bg: #f1dcdc;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'ss01', 'cv11';
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  font-size: 16px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+a:visited {
+  color: #1e3f35; /* visited stays distinguishable, same family */
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px 64px;
+}
+
+.mono {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+}
+
+.eyebrow {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 0 14px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-size: 15px;
+}
+.brand__mark {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.chip {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--mute);
+  white-space: nowrap;
+}
+.chip--active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: transparent;
+}
+.chip--revoked {
+  background: var(--neg-bg);
+  color: var(--neg);
+  border-color: transparent;
+}
+.chip--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-color: transparent;
+}
+
+/* Claim strip */
+.claim {
+  padding: 36px 0 28px;
+}
+.claim h1 {
+  font-size: clamp(26px, 4.5vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  max-width: 21ch;
+}
+.claim__stats {
+  display: flex;
+  gap: 40px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+.stat .stat__num {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.stat .stat__label {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* Sections read as ruled ledger areas, not cards */
+.section {
+  padding: 26px 0;
+  border-top: 1px solid var(--line);
+}
+.section__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.section__head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Decision log rows */
+.log-row {
+  display: grid;
+  grid-template-columns: 128px 92px 1fr auto;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-2);
+  align-items: baseline;
+  font-size: 14px;
+}
+.log-row--move {
+  background: var(--surface);
+  margin: 0 -12px;
+  padding: 14px 12px;
+  border-radius: 8px;
+  border-bottom: none;
+}
+.log-row__ts {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--mute);
+}
+.kind {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+.kind--deploy { color: var(--accent); }
+.kind--withdraw { color: var(--warn); }
+.kind--hold { color: var(--mute-2); }
+.kind--floor { color: var(--warn); }
+.kind--failed { color: var(--neg); }
+.log-row__reason {
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.log-row--quiet .log-row__reason {
+  color: var(--mute);
+  font-size: 13px;
+}
+.log-row__links {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.badge-ok {
+  color: var(--accent);
+}
+.badge-bad {
+  color: var(--neg);
+}
+
+/* Two-column bottom row → single column on mobile */
+.bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+@media (max-width: 720px) {
+  .bottom {
+    grid-template-columns: 1fr;
+  }
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .log-row__links {
+    white-space: normal;
+  }
+}
+
+/* Mandate panel — the one bordered object; it IS a contract */
+.contract {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--canvas);
+  padding: 18px 20px;
+}
+.contract dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 9px;
+  font-size: 14px;
+}
+.contract dt {
+  color: var(--mute);
+}
+.contract dd {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  text-align: right;
+}
+.contract--revoked {
+  border-color: var(--neg);
+  background: var(--neg-bg);
+}
+
+/* Uptime strip */
+.uptime {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 34px;
+  margin-top: 10px;
+}
+.uptime i {
+  flex: 1;
+  min-width: 3px;
+  max-width: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.75;
+  height: 100%;
+}
+.uptime i.u-skip { background: var(--mute-2); height: 55%; }
+.uptime i.u-fail { background: var(--neg); height: 100%; }
+
+/* States */
+.banner-revoked {
+  background: var(--neg-bg);
+  color: var(--neg);
+  border: 1px solid var(--neg);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 18px 0 0;
+  font-size: 14px;
+}
+.empty {
+  color: var(--mute);
+  font-size: 14px;
+  padding: 18px 0;
+  line-height: 1.5;
+}
+.skeleton {
+  color: var(--mute-2);
+  padding: 48px 0;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 13px;
+}
+.footer {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 8px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
