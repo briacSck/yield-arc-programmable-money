@@ -204,7 +204,7 @@ if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1])))
   console.log(`[agent] starting scheduler: mode=${mode}, interval=${intervalMs}ms`);
   const deps = buildDeps();
   startScheduler(deps, { intervalMs });
-  const port = Number(process.env.WORKER_PORT || 0);
+  const port = Number(process.env.WORKER_PORT || process.env.PORT || 0);
   if (port > 0) {
     startWorkerServer(port, {
       env: process.env,
