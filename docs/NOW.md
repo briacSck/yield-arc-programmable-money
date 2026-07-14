@@ -71,12 +71,11 @@ Redeploying the dashboard NEVER touches the worker — iterate UI freely.
 ## User actions (time-sensitive)
 
 - ✅ Team confirmed (Vadim + Sara in). ✅ Sleep off on the dev machine.
-- ⏳ **Railway Hobby billing** on Briac's Projects → deploy auto-retries.
-- **HEARTBEAT_URL is NOT set** (template comment mistaken for a value) — create a check at
-  healthchecks.io, then set it locally in `.env` AND `railway variables --service worker --set
-  HEARTBEAT_URL=…`. Until then the loop runs unmonitored.
-- USYC allowlist ticket (draft in git history of this file) · CP1 blurb (§10) by Saturday ·
-  Corey ping (§9.3) · 30-min Discord recon.
+- ✅ Railway billing + deploy (done 07-14). ✅ **Heartbeat monitoring LIVE** (healthchecks.io,
+  15-min period / 10-min grace; worker pings every cycle, POSTs `/fail` on gas exhaustion —
+  weekly Friday chaos drill per §15.4: kill the worker, verify the alert fires).
+- ✅ USYC ticket submitted + acknowledged — ⏳ answer their additional-info request.
+- CP1 blurb (§10) by Saturday · Corey ping (draft delivered 07-14) · 30-min Discord recon.
 - **Vadim**: nod on two additive changes — venue seam (§17.2 IVenue) + `DecisionConfig` cap
   fields (shipped, flagged); review AgentMandate + the trade-gate sims.
 
