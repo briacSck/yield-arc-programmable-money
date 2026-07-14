@@ -4,13 +4,13 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-14 midday (DAY 2b: trade mode LIVE, dashboard built, Railway in progress)_
+_Last updated: 2026-07-14 afternoon (DAY 2b COMPLETE: Tier-1 DEPLOYED — dashboard public, worker autonomous on Railway)_
 
 ## Deployment URLs + addresses
 
 | Thing | Value |
 |---|---|
-| **Dashboard (public)** | `https://dashboard-production-abea.up.railway.app` _(deploy pending workspace billing — services + volume + vars are configured; local loop carries the clock meanwhile)_ |
+| **Dashboard (public, LIVE)** | `https://dashboard-production-abea.up.railway.app` — /health 200, content-based |
 | **AgentMandate (LIVE)** | `0x856bec6faadd61b583430e0cd22ec2e211c782b4` — floor 5 / ticket 2 / dailyCap 5 USDC, 6-dec pools |
 | **ERC-8004 agent identity** | agentId `850878` on `0x8004A818…BD9e` |
 | Agent wallet (EOA, Circle) | `0x93d9c11c8e9e23e1e97e855668a27a14accaab7c` |
@@ -40,15 +40,16 @@ anti-oscillation cooldown. The compounding on-chain clock started 2026-07-14.
   when fresh).
 - Executor: retry-once on Circle first-connection resets (caught live on cycle #0).
 
-## Railway state (finish this first next session if not done)
+## Railway state — DEPLOYED ✅ (2026-07-14 ~11:18 UTC)
 
-Configured end-to-end: project + 2 services + `/data` volume + all env vars (worker: chain +
-Circle creds + trade mode + volume paths, NIXPACKS build/start cmds; dashboard: `WORKER_URL=
-http://worker.railway.internal:8787` + build cmds). **Blocked on: workspace billing (Hobby plan)
-on "Briac's Projects"** — builds fail at scheduling with no logs until then. After billing:
-`railway up --service worker --ci` then `--service dashboard`, verify
-`https://dashboard-production-abea.up.railway.app/health` → 200, THEN kill the local loop
-(one owner). Local machine is on never-sleep and carries the clock meanwhile.
+Two services live on project `yield-agentic-cfo`: `worker` (loop + /data volume + internal
+:8787, trade mode, 15-min cycles) + `dashboard` (public URL above, proxies the worker). The
+Railway worker's **first autonomous cycle deployed 2 USDC on its own** (`0xf0b60b…dc44`) —
+daily budget now 4.98/5.00, caps visibly binding. Local loop KILLED (one owner). Deploy
+gotchas for the record: Railway builds with **Railpack** (NIXPACKS_* vars ignored) → root
+`start`/`build` dispatch on `RAILWAY_SERVICE_NAME` (`scripts/railway-*.mjs`); Circle SDK needs
+the ESM/CJS interop import (`agent/src/chain/index.ts`); Node pinned to 24 (`.node-version`).
+Redeploying the dashboard NEVER touches the worker — iterate UI freely.
 
 ## Video shot list v1 (§11 beats → shots; build B-roll against these)
 
