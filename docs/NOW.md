@@ -4,7 +4,19 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-14 afternoon (DAY 2b COMPLETE: Tier-1 DEPLOYED — dashboard public, worker autonomous on Railway)_
+_Last updated: 2026-07-14 evening (plan v3 APPROVED — W2 verifier track specced; Tier-1 live and untouched)_
+
+## PLAN v3 APPROVED (2026-07-14 evening) — W2 build order
+
+Full spec lives in the local plan (§18, four pinned layers: design/eng/DX/narrative). Team-safe summary — W2 lanes in order:
+1. **Worker preimage route FIRST**: one additive `GET /forecasts?inputsHash=0x…` in `agent/src/server.ts` + worker redeploy (scheduler/decision/executor untouched — that's the redefined "untouchable" boundary).
+2. **`verifier/` package**: two-layer (fetch → pure replay core); 5 invariants machine-checked over full mandate history; invariant 3 = EXACT lazy-tumbling-window replay (naive rolling sums = false alarms); both fixture suites (violating + compliant-adversarial ≥8) + live-history golden test; bundled single-file CLI, zero-config defaults, `--fixture`, exit codes 0/1/2, <60 s budget asserted in CI. Degraded ship path if 5/5 slips past **Wed Jul 22**: receipt-check-only for CP2, disclosed.
+3. **Audit surface on the dashboard**: scoreboard band above the log (5 invariant chips + "N moves × 5 invariants — 0 violations" + closest-approach stat) + per-row verdict chips (PASS/VIOLATION/PENDING/UNVERIFIED — never "FAILED"; post-revoke blocked moves render `BLOCKED — mandate enforced` in sage). Verdicts arrive via nightly CI → `audit-log` git ref → proxy splice into `/api/events`. No plumbing failure may ever render red.
+4. **ERC draft** (Briac, ≤3 afternoons): interface + invariants + prior-art falsification (incl. Enzyme/Zodiac) + normative hash rules + fixture files as conformance vectors.
+5. **README top fold at CP2**: claim one-liner, `npx -y` block, nightly-audit badge, dashboard link, mandate address + arcscan, Circle tools named, three trust tiers.
+
+**Vadim nods pending (one batch):** shared-schema cap fields (below) + venue seam + mandate-interface generalization + AgentMandate/trade-gate sims review.
+**Today-actions:** npm org check — `@yield` likely taken → lock **`@yield-cfo`** before CP1 copy freezes the string. `TODOS.md` now tracks deferred items (incl. the decisionId NatSpec errata — fold into the first verifier PR).
 
 ## Deployment URLs + addresses
 
