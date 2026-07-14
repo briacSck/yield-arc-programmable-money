@@ -16,7 +16,7 @@ Full spec lives in the local plan (§18, four pinned layers: design/eng/DX/narra
 5. **README top fold at CP2**: claim one-liner, `npx -y` block, nightly-audit badge, dashboard link, mandate address + arcscan, Circle tools named, three trust tiers.
 
 **Vadim nods pending (one batch):** shared-schema cap fields (below) + venue seam + mandate-interface generalization + AgentMandate/trade-gate sims review.
-**Today-actions:** npm org check — `@yield` likely taken → lock **`@yield-cfo`** before CP1 copy freezes the string. `TODOS.md` now tracks deferred items (incl. the decisionId NatSpec errata — fold into the first verifier PR).
+**Today-actions:** npm scope ✅ LOCKED: org `yield-cfo` registered on npm (2026-07-14) — the judge command is `npx -y @yield-cfo/mandate-verify`, safe to print in CP1/deck. `TODOS.md` now tracks deferred items (incl. the decisionId NatSpec errata — fold into the first verifier PR).
 
 ## Deployment URLs + addresses
 
