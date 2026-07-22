@@ -1,0 +1,4 @@
+{
+  "name": "underwriting-history",
+  "description": "One record per underwriting run (the full certificate) plus a running trend.md — read before pricing, append after, so each assessment can state how the premium moved since the last one."
+}

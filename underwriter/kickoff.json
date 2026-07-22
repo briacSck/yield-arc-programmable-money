@@ -1,0 +1,13 @@
+{
+  "events": [
+    {
+      "type": "user.define_outcome",
+      "description": "Run today's underwriting assessment of the YIELD CFO agent.\n\nFetch the CFO's public dashboard and cross-check the AgentMandate contract state on the Arc testnet as of right now. Compute this run's risk stats and a stub-v0 premium. Write certificate.json and memo.md to the outputs directory.\n\nBefore finalizing, read the underwriting-history memory store for prior assessments and state how today's premium compares to the most recent one. Then append this run's certificate to that memory store and update trend.md.",
+      "rubric": {
+        "type": "text",
+        "content": "1. `certificate.json` is written to outputs and contains every required field (`certificate_id`, `issued_at`, `verification.mode`, `subject`, `checks[]`, `risk_stats`, `premium` with `formula_version` + `disclosure`, `trend`, `disclaimers`) populated with real fetched/computed values — no placeholders.\n2. Every entry in `checks[]` has `status` strictly one of `PASS`, `PENDING`, or `UNVERIFIED` — never `FAILED` or any other value, even when a data source is missing or a call fails.\n3. No check treats a missing/null dashboard field or a failed/reverted on-chain call as evidence of a mandate violation — those are marked `UNVERIFIED`/`PENDING` with a plain explanation, never framed as a breach.\n4. `premium.formula_version` is `\"stub-v0\"` and `premium.inputs` shows the actual `max_loss_per_window_usdc` / `hazard` / `surcharge` / `compliant_days` values used to reach `premium_30d_usdc`.\n5. `memo.md` exists alongside the certificate as a ~1-page human-readable summary covering the same checks, risk stats, premium, and trend, ending with the preliminary/pending-machine-verification disclaimer.\n6. `trend` reflects the underwriting-history memory store (states the comparison to the most recent prior assessment, seeded or real), and the memory store is updated with this run's record before the run ends."
+      },
+      "max_iterations": 3
+    }
+  ]
+}

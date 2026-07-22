@@ -1,0 +1,10 @@
+{
+  "status": "BOUND",
+  "policy_id": "POL-d2fa68",
+  "approved_by": "human underwriter (demo)",
+  "certificate_id": "uw-2026-07-22-42569c04",
+  "premium_30d_usdc": 0.085076,
+  "coverage_limit_usdc": 1,
+  "window_days": 30,
+  "note": "Demo bind \u2014 client-executed custom tool. A real bind would be an MCP connector gated always_ask (see NEXT-DIRECTIONS)."
+}

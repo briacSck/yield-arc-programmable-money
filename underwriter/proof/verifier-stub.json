@@ -1,0 +1,16 @@
+{
+  "_note": "Simulated success output of `npx -y @yield-cfo/mandate-verify --json`. The real package does not exist yet (npm E404); this stub lets us prove offline that the agent's already-wired upgrade path renders a machine-verified certificate the moment it ships. Not produced by a real verifier.",
+  "tool": "@yield-cfo/mandate-verify",
+  "version": "0.1.0-simulated",
+  "chain_id": 5042002,
+  "mandate_address": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
+  "verified_at": "SIMULATED",
+  "invariants": [
+    {"id": "floor_respected", "covers_check": "floor_integrity", "result": "pass", "detail": "companyBalance >= floorUsdc across the full window; no sub-floor state observed."},
+    {"id": "ticket_bound", "covers_check": "per_move_ticket_adherence", "result": "pass", "detail": "every executed transfer <= maxTicketUsdc."},
+    {"id": "daily_cap_bound", "covers_check": "mandate_daily_cap_read", "result": "pass", "detail": "windowDeployed <= dailyCapUsdc for the active window."},
+    {"id": "not_revoked", "covers_check": "mandate_revocation_status", "result": "pass", "detail": "revoked() == false at verification height."},
+    {"id": "window_consistent", "covers_check": "mandate_window_read", "result": "pass", "detail": "windowStart/windowDeployed consistent with on-chain accounting."}
+  ],
+  "overall": "pass"
+}

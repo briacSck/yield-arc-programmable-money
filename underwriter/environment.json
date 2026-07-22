@@ -1,0 +1,18 @@
+{
+  "name": "the-underwriter-env",
+  "config": {
+    "type": "cloud",
+    "networking": {
+      "type": "limited",
+      "allowed_hosts": [
+        "dashboard-production-abea.up.railway.app",
+        "rpc.testnet.arc.network"
+      ],
+      "allow_mcp_servers": false,
+      "allow_package_managers": true
+    },
+    "packages": {
+      "npm": ["viem"]
+    }
+  }
+}

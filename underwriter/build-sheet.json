@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "founder": "Briac",
+    "company": "YIELD",
+    "problem": "An independent underwriter that assesses my live on-chain CFO agent (YIELD) at arm's length and prices insurance for it — bounded ⇒ insurable ⇒ scalable.",
+    "created": "2026-07-22",
+    "skill_version": "0.1"
+  },
+  "agent": {
+    "name": "the-underwriter",
+    "model": "claude-opus-4-8",
+    "model_rationale": "Newest Opus-class — pricing risk correctly requires careful, disciplined reasoning, and a daily run still costs cents.",
+    "version": null,
+    "system_summary": "Fetches YIELD CFO's public dashboard + cross-checks the on-chain AgentMandate contract on Arc testnet, computes risk stats and a disclosed stub-v0 premium, writes a certificate + memo, and keeps a memory-store trend across runs.",
+    "never_dos": [
+      "Never send a transaction, sign anything, or use any key/credential — HTTP GET and eth_call only",
+      "Never label a check FAILED or treat a data gap (null field, RPC timeout, decode error) as a mandate violation — checks are strictly PASS/PENDING/UNVERIFIED",
+      "Never call web_fetch/web_search (bypass the environment's network allowlist) — bash/curl/node only",
+      "Never present a certificate as a final bound insurance decision — always preliminary"
+    ]
+  },
+  "outcome": {
+    "description": "Run today's underwriting assessment of the YIELD CFO agent; write certificate.json + memo.md; update the underwriting-history memory store.",
+    "rubric_criteria": [
+      "certificate.json written with every required field, real values, no placeholders",
+      "every checks[].status is strictly PASS | PENDING | UNVERIFIED",
+      "no data gap is framed as a violation",
+      "premium.formula_version is stub-v0 and inputs are disclosed",
+      "memo.md exists as a ~1-page human-readable summary with the preliminary disclaimer",
+      "trend reflects the memory store and the store is updated with this run"
+    ],
+    "max_iterations": 3
+  },
+  "tools": {
+    "toolset": "agent_toolset_20260401",
+    "enabled": ["bash", "read", "write", "edit", "glob", "grep"],
+    "disabled": ["web_fetch", "web_search"],
+    "permission_overrides": [],
+    "custom_tools": [],
+    "notes": "web_fetch/web_search disabled on purpose — those tools have their own domain policy independent of the environment's networking allowlist, so disabling them keeps the agent's network access strictly confined to the 2 allowed hosts."
+  },
+  "connections": {
+    "mcp_servers": [],
+    "vault_credentials": [],
+    "github": null,
+    "notes": "No connector, no vault, zero credentials by design — every data source is public read-only HTTP/RPC. Bind-coverage (a real write-action) is Next direction v2, gated always_ask."
+  },
+  "skills": [],
+  "memory": {
+    "stores": [
+      {
+        "name": "underwriting-history",
+        "access": "read_write",
+        "purpose": "Every run's certificate + a running trend.md, so premiums can be compared assessment-to-assessment.",
+        "seed": "memory_seed/seed-assessment.json + memory_seed/trend.md — a synthetic, clearly-labeled 'seeded': true baseline record (1 compliant day, higher hazard) so run 1 can already state a trend."
+      }
+    ]
+  },
+  "environment": {
+    "name": "the-underwriter-env",
+    "type": "cloud",
+    "networking": "limited",
+    "allowed_hosts": ["dashboard-production-abea.up.railway.app", "rpc.testnet.arc.network"],
+    "allow_package_managers": true,
+    "packages": {"npm": ["viem"]}
+  },
+  "schedule": {
+    "mode": "scheduled",
+    "cron": "0 7 * * *",
+    "timezone": "America/Los_Angeles",
+    "human": "Every day at 7:00 AM Pacific",
+    "kickoff": "user.define_outcome (task + rubric above) — also available on demand via LAUNCH.md and via a manual deployment run"
+  },
+  "evals": {
+    "cases": [
+      {"name": "case-01", "input": "today's live dashboard + on-chain state", "expected": "evals/case-01/expected.json + expected.md (today's verified run)", "last_verdict": "satisfied", "session_id": "sesn_011VLTmTzjj1fNKRMRCEchsT", "premium_30d_usdc": 0.085076}
+    ],
+    "notes": "Brand-new agent, no past cases. Case 1 = today's first verified certificate, saved as evals/case-01/expected.* at close. Future agent versions re-run this before promoting to the deployment."
+  },
+  "defaults_applied": {
+    "iteration_bound": "Outcome stops after 3 grade-and-improve cycles",
+    "write_actions": "None at all — strictly read-only data sources, drafts-only output"
+  },
+  "interface": {
+    "who": "Briac (solo, hackathon demo)",
+    "how": "Certificate + memo land as files in session outputs; Console for run history and traces; LAUNCH.md is the terminal interface."
+  },
+  "next_directions": [
+    {
+      "what": "Machine-verified mode via npx @yield-cfo/mandate-verify",
+      "why_deferred": "Blocked on an external package that doesn't exist yet — not a credential gap, not a CMA limitation",
+      "how": "Already wired in the system prompt; the next run after the package publishes flips verification.mode automatically, zero code change"
+    },
+    {
+      "what": "Bind-coverage write-action behind an always_ask gate",
+      "why_deferred": "Out of scope for today's demo — no binding mechanism defined yet, certificates are explicitly preliminary",
+      "how": "Add a custom tool (or MCP connector once a target exists) with permission_policy: always_ask; confirm via user.tool_confirmation"
+    },
+    {
+      "what": "ERC-8004 registry cross-check as its own check",
+      "why_deferred": "Registry address + agentId given, but not which getters/ABI to call",
+      "how": "Confirm the registry ABI, add it alongside the AgentMandate ABI, add one more checks[] entry"
+    },
+    {
+      "what": "Re-run evals/ before promoting any new agent version to the deployment",
+      "why_deferred": "Process habit, not a build task",
+      "how": "evals/run-evals.sh against the new version; only update deployment.json's pinned version when verdicts hold"
+    }
+  ],
+  "ids": {
+    "ENV_ID": "env_01CmB3dEvqSiqDoN9uVr47JF",
+    "AGENT_ID": "agent_01CyAge5BGszCsVv7Q1Xkr62",
+    "AGENT_VERSION": 1,
+    "MEMSTORE_ID": "memstore_01Wz8h7HcwWcUaqqPK2RYxgn",
+    "SESSION_ID": "sesn_011VLTmTzjj1fNKRMRCEchsT",
+    "DEPLOYMENT_ID": "depl_01BJhJXeT2EKbqbd53yAaZnX",
+    "MANUAL_TEST_SESSION_ID": "sesn_01KVx7iE3rpkAecY58weNm6G"
+  },
+  "artifacts": {
+    "v1_flip_proof": "proof/simulate-verifier.sh — offline: flips a real certificate to machine-verified using a simulated verifier payload. Live path already wired in the system prompt.",
+    "v2_bind_flow": "bind/ — on-demand, human-gated bind-coverage via a SESSION-LOCAL custom tool (no new agent version; daily assessor untouched). Demo bind: policy POL-d2fa68 against uw-2026-07-22-42569c04.",
+    "results_viewer": "viewer/build-viewer.sh → viewer/results-viewer.html — self-contained premium-trend page (data baked in, opens offline).",
+    "submission": "SUBMISSION.md — short Google-Form-ready pitch answers.",
+    "regression_verified": "Live agent still v1, base toolset only, deployment references latest — bind flow never modified the scheduled assessor."
+  }
+}

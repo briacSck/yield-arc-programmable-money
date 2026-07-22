@@ -1,0 +1,1 @@
+No past underwriting runs exist yet — this is a brand-new agent. Case 1 is today's first *verified* run: once we've read the grader's verdict and checked the output by hand, the winning `certificate.json` + `memo.md` get copied here as `expected.json` / `expected.md` — the regression baseline for the next agent version, not a permanent golden answer.

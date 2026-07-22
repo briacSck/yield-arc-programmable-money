@@ -1,0 +1,42 @@
+[
+  {
+    "label": "baseline (seed)",
+    "session": null,
+    "issued_at": "2026-07-15T09:00:00-07:00",
+    "premium": 49.0,
+    "mode": "seed",
+    "pass": null,
+    "pending": null,
+    "unverified": null,
+    "closest_floor": null,
+    "seeded": true
+  },
+  {
+    "label": "uw-2026-07-22-42569c04",
+    "session": "sesn_011VLTmTzjj1fNKRMRCEchsT",
+    "issued_at": "2026-07-22T14:14:48Z",
+    "premium": 0.085076,
+    "mode": "degraded-heuristic",
+    "pass": 14,
+    "pending": 2,
+    "unverified": 1,
+    "closest_floor": 1.0,
+    "daily_cap_util": 99.72,
+    "revoked": false,
+    "seeded": false
+  },
+  {
+    "label": "uw-2026-07-22-8baae5ae",
+    "session": "sesn_01KVx7iE3rpkAecY58weNm6G",
+    "issued_at": "2026-07-22T14:20:56Z",
+    "premium": 0.085076,
+    "mode": "degraded-heuristic",
+    "pass": 14,
+    "pending": 2,
+    "unverified": 1,
+    "closest_floor": 1.0,
+    "daily_cap_util": 99.72,
+    "revoked": false,
+    "seeded": false
+  }
+]

@@ -61,6 +61,7 @@ solvency.** Any degraded input → `HOLD`. All money movement goes through one `
 | `scenario/` | seeded-ledger generator + simulated-clock demo driver |
 | `dashboard/` | live decision log + explorer links (Next.js, on Railway) |
 | `verifier/` | *(W2)* judge-runnable invariant verifier — replays the mandate's full event history and machine-checks it |
+| `underwriter/` | *(W3)* Claude Managed Agent that prices insurance for the CFO from its on-chain mandate + verified history — disclosed stub premium, daily certificate output |
 
 ## Status
 
