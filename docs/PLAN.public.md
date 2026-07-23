@@ -182,11 +182,15 @@ FAILED → throw → HOLD + alert (never blind-retry a money movement).
 
 **17.4 Yield venue:** default **USYC** (real tokenized-MMF testnet primitive) behind the
 `ChainExecutor`/mandate seam, gated on allowlisting; fallback is an explicitly-labeled DEMO ACCRUAL
-(never display fake yield as real). **Allowlist CONFIRMED on-chain 2026-07-23** — the USYC Teller
-(`0x9fdF…C105A`) is an ERC-4626 vault (asset = USDC, share = USYC) and exposes the allowlist as
-views; the agent wallet reads `subscriptionLimitRemaining` = 1,000,000 USDC/day. Test kit:
-`agent/scripts/usyc-mint-test.ts` (read-only preflight + guarded `--execute` mint). Real USDC→USYC
-mint pending a deliberate run; then swap the venue box behind the seam.
+(never display fake yield as real). **REAL, round-trip proven on-chain 2026-07-23** — the USYC
+Teller (`0x9fdF…C105A`) is an ERC-4626 vault (asset = USDC, share = USYC). The agent wallet is
+allowlisted (`subscriptionLimitRemaining` = 1,000,000 USDC/day) and executed a full round-trip:
+subscribe 1 USDC → 0.883398 USYC (deposit `0x46b1dba7…`), redeem → 0.999903 USDC (`0xfd6e3a65…`).
+Kit: `agent/scripts/usyc-mint-test.ts`; venue seam: `agent/src/chain/usyc-venue.ts` (`IVenue` —
+read-only previews/allowlist + money-move call specs the `ChainExecutor` signs, never moving money
+itself). **Not yet wired into the live loop** (frozen mandate + untouchable executor) — wiring USYC
+as the mandate's deploy target is the next gated step; the round-trip already stands as a real
+DeFi-track beat.
 
 **17.5 Toolchain:** Hardhat (proven `arc-verify.yml` real-EVM CI is the source of truth — local
 anvil/hardhat-network cannot reproduce Arc semantics: native-USDC rules, `PREVRANDAO`=0, EIP-7708

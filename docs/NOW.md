@@ -50,16 +50,24 @@ the public `/api/events` serves an `audit` block (COMPLIANT · 5 moves × 5 inva
   wrong-verdict guard (unseeded scan → exit 2), dashboard crash + green-spoof on malformed feed,
   CI history-destruction (force-push → append), bounded getBlock. Verifier 19/19 tests green.
 
-## USYC venue — allowlist CONFIRMED on-chain (2026-07-23)
+## USYC venue — REAL, round-trip proven on-chain (2026-07-23)
 
-**The agent wallet IS allowlisted for USYC** — settled read-only, no email round-trip. The USYC
-Teller (`0x9fdF…C105A`, an ERC-4626 vault; asset = USDC, share = USYC ✓) exposes the allowlist as
-views: agent wallet `subscriptionLimitRemaining` = **1,000,000 USDC/day**, `maxDeposit` = full USDC
-balance. Circle's confirmation email said "USDC allowlist" but functionally USYC subscription is
-enabled. Test kit: `agent/scripts/usyc-mint-test.ts` — read-only preflight by default (proves
-allowlist, moves nothing); `--execute --amount <n>` does a real USDC→USYC mint via the Circle wallet
-(gas-reserve guarded). **Not yet executed** — a real mint moves the live agent wallet's gas funds;
-run deliberately. This is the seam to flip the venue from disclosed stub to real (§17.4).
+**The USYC venue works both directions on Arc testnet.** The USYC Teller (`0x9fdF…C105A`, an
+ERC-4626 vault; asset = USDC `0x3600…`, share = USYC `0xe918…b86C`) — the agent wallet is
+allowlisted (`subscriptionLimitRemaining` = 1,000,000 USDC/day; Circle's "USDC allowlist" email
+wording notwithstanding). **Executed live:**
+- **Subscribe** 1 USDC → **0.883398 USYC** (approve `0x9636f289…`, deposit `0x46b1dba7…`). The sub-1
+  ratio is USYC's NAV — each share is worth >1 USDC of accrued T-bill value.
+- **Redeem** 0.883398 USYC → **0.999903 USDC** (`0xfd6e3a65…`). Agent wallet 6.971204 → 6.954969
+  USDC (net ~1.6¢ gas), USYC back to 0. Both legs = the deploy/pull-back pair the CFO loop needs.
+
+Kit: `agent/scripts/usyc-mint-test.ts` (read-only preflight · `--execute --amount <n>` mint ·
+`--execute --redeem` unwind; gas-reserve guarded). **Venue adapter shipped:**
+`agent/src/chain/usyc-venue.ts` — the `IVenue` seam (read-only previews/allowlist + money-move
+*call specs* the `ChainExecutor` signs; never moves money itself, invariant #1). 6 tests + live
+smoke. **NOT yet wired into the live loop** — the mandate contract is frozen and the
+scheduler/executor path is untouchable; wiring USYC as the mandate's deploy target behind the seam
+is the next gated step (needs the team nod, §17.2). Today it's proven + ready, not integrated.
 
 ## The Verifier — core shipped (2026-07-23) — the W2 star
 

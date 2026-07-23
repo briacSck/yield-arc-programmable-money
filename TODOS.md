@@ -14,9 +14,11 @@ Deferred work, captured by /autoplan run 3 (2026-07-14). Items here are consciou
 - [x] **Railway deploy** — done. Railway does NOT auto-deploy from `main` (deploys are manual `railway up --service <worker|dashboard>`). Worker + dashboard both redeployed 2026-07-23; loop revived, first WITHDRAW landed 18:24 UTC.
 - [ ] Confirm the **healthchecks.io** alert now actually fires on a FAILED storm (the fix pings `/fail` on 3 consecutive FAILED; the Friday §15.4 chaos drill should now catch a process-up-but-all-failing state, which it missed for 8 days). Wire the worker's `HEARTBEAT_URL` if not already set on Railway.
 
-## USYC venue (§17.4) — allowlist CONFIRMED 2026-07-23
-- [x] **Allowlist confirmed on-chain** (read-only): agent wallet `0x93d9…ab7c` `subscriptionLimitRemaining` = 1,000,000 USDC/day on the Teller `0x9fdF…C105A`. Circle's "USDC allowlist" wording notwithstanding, USYC subscription is enabled. Test kit: `agent/scripts/usyc-mint-test.ts`.
-- [ ] **Execute the real USDC→USYC mint** (`--execute --amount 1`) to prove the venue end-to-end — moves the live agent wallet's gas funds, so run deliberately. Then decide the venue-adapter integration behind the `ChainExecutor`/mandate seam (§17.4) vs keeping the disclosed stub for the demo.
+## USYC venue (§17.4) — REAL, round-trip proven 2026-07-23
+- [x] **Allowlist confirmed + round-trip executed on-chain**: subscribe 1 USDC → 0.883398 USYC (deposit `0x46b1dba7…`), redeem → 0.999903 USDC (`0xfd6e3a65…`). Kit: `agent/scripts/usyc-mint-test.ts`.
+- [x] **Venue adapter** `agent/src/chain/usyc-venue.ts` (`IVenue` seam: read-only previews/allowlist + money-move call specs the executor signs; 6 tests + live smoke).
+- [ ] **Wire USYC as the mandate's deploy target behind the seam** — GATED (untouchable path + frozen contract): the deployed `AgentMandate` is pure pool-accounting and does not mint USYC inside `deposit()`. Real integration needs either (a) executor-level: on a DEPLOY, mandate.deposit + USYCVenue.mintCall as a paired move, or (b) a new venue-aware mandate. Needs the team nod (§17.2). Decide vs keeping the disclosed stub for the demo — the round-trip is already a strong standalone DeFi-track beat.
+- [ ] Decide whether the demo shows the agent HOLDING USYC (real yield position) vs the round-trip proof only.
 
 ## Post-hackathon
 - [ ] `/api/events` pagination: `server.ts` caps `limit` at 1000 (~890 records by Demo Day — fine; silently truncating from late August). The verifier is deliberately independent of this route.

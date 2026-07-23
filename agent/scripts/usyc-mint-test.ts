@@ -49,10 +49,13 @@ const TELLER_ABI = parseAbi([
   'function asset() view returns (address)',
   'function share() view returns (address)',
   'function maxDeposit(address) view returns (uint256)',
+  'function maxRedeem(address) view returns (uint256)',
   'function subscriptionLimitRemaining(address account, uint256 date) view returns (uint256)',
   'function todayTimestamp() view returns (uint256)',
   'function previewDeposit(uint256 assets) view returns (uint256)',
+  'function previewRedeem(uint256 shares) view returns (uint256)',
   'function deposit(uint256 assets, address receiver) returns (uint256)',
+  'function redeem(uint256 shares, address receiver, address account) returns (uint256)',
 ]);
 const ERC20_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
@@ -81,6 +84,7 @@ async function waitForTerminal(client: Client, id: string, label: string) {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const execute = args.includes('--execute');
+  const redeemMode = args.includes('--redeem'); // redeem ALL current USYC back to USDC
   const amountArg = args[args.indexOf('--amount') + 1];
 
   const env = readEnv();
@@ -115,11 +119,38 @@ async function main(): Promise<void> {
   console.log(`  >>> ALLOWLISTED FOR USYC: ${allowlisted ? 'YES ✓' : 'NO ✗'}`);
 
   if (!execute) {
-    console.log('\n  (preflight only — pass `--execute --amount <USDC>` to mint for real)');
+    console.log('\n  (preflight only — `--execute --amount <USDC>` mints; `--execute --redeem` unwinds)');
     return;
   }
 
-  // ── Execute a real mint ─────────────────────────────────────────────────────
+  const client = initiateDeveloperControlledWalletsClient({
+    apiKey: required(env, 'CIRCLE_API_KEY'),
+    entitySecret: required(env, 'CIRCLE_ENTITY_SECRET'),
+  });
+  const walletId = required(env, 'CIRCLE_AGENT_WALLET_ID');
+
+  // ── Redeem path: USYC → USDC (proves the withdraw leg / round-trip) ─────────
+  if (redeemMode) {
+    if (usycBal <= 0n) throw new Error('nothing to redeem: USYC balance is 0.');
+    const expectUsdc = await tRead<bigint>('previewRedeem', [usycBal]);
+    console.log(`\n  REDEEMING: ${formatUnits(usycBal, 6)} USYC → expect ~${formatUnits(expectUsdc, 6)} USDC`);
+    // caller == receiver == account (agent redeems its own shares) — no allowance needed.
+    const rd = await client.createContractExecutionTransaction({
+      walletId,
+      contractAddress: TELLER,
+      abiFunctionSignature: 'redeem(uint256,address,address)',
+      abiParameters: [usycBal.toString(), agent, agent],
+      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
+    });
+    await waitForTerminal(client, rd.data!.id, 'redeem');
+    const usycAfter = await eRead<bigint>(USYC, 'balanceOf', [agent]);
+    const usdcAfter = await eRead<bigint>(USDC_ERC20, 'balanceOf', [agent]);
+    console.log(`  USYC ${formatUnits(usycBal, 6)} → ${formatUnits(usycAfter, 6)} · USDC ${formatUnits(usdcBal, 6)} → ${formatUnits(usdcAfter, 6)}`);
+    console.log('  USYC REDEEM LANDED ✓ — USYC→USDC round-trip proven on Arc testnet.');
+    return;
+  }
+
+  // ── Mint path: USDC → USYC ──────────────────────────────────────────────────
   if (!allowlisted) throw new Error('refusing --execute: wallet is not allowlisted for USYC.');
   if (!amountArg) throw new Error('--execute requires --amount <USDC> (e.g. --amount 1).');
   const amount = parseUnits(amountArg, 6);
@@ -132,12 +163,6 @@ async function main(): Promise<void> {
   }
   const expectedShares = await tRead<bigint>('previewDeposit', [amount]);
   console.log(`\n  EXECUTING: deposit ${amountArg} USDC → expect ~${formatUnits(expectedShares, 6)} USYC`);
-
-  const client = initiateDeveloperControlledWalletsClient({
-    apiKey: required(env, 'CIRCLE_API_KEY'),
-    entitySecret: required(env, 'CIRCLE_ENTITY_SECRET'),
-  });
-  const walletId = required(env, 'CIRCLE_AGENT_WALLET_ID');
 
   // 1) approve(Teller, amount) on USDC — only if the existing allowance is short.
   const allowance = await eRead<bigint>(USDC_ERC20, 'allowance', [agent, TELLER]);
