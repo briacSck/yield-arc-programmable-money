@@ -1,0 +1,71 @@
+name: nightly-audit
+
+# The verifier runs against the LIVE mandate history every night and publishes its verdict to the
+# dedicated `audit-log` git ref (plan §18.2 [DECIDED — CI push]). The dashboard proxy fetches that
+# raw file and splices it into /api/events → the scoreboard band. The git history of `audit-log` is
+# itself a tamper-evident audit trail. `workflow_dispatch` allows a manual pre-demo run.
+#
+# Publishing to a separate ref (not main) keeps main's history free of nightly commit churn, and a
+# green run here is the README's "continuously audited autonomy" badge.
+
+on:
+  schedule:
+    - cron: '17 7 * * *' # 07:17 UTC nightly (offset off the hour to dodge the cron rush)
+  workflow_dispatch: {}
+
+# The job pushes one file to the audit-log ref — nothing else needs write.
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install
+        run: npm ci
+
+      - name: Run the verifier over live history
+        id: verify
+        # Exit codes: 0 = COMPLIANT, 1 = VIOLATION (still publish — that's the product working),
+        # 2 = operational error (do NOT publish; keep the last good verdict so an RPC flake at
+        # 3am never renders plumbing-red on the dashboard).
+        run: |
+          set +e
+          npx tsx verifier/src/cli.ts --json > verdicts.json
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::verifier hit an operational error (exit 2) — not publishing; last verdict stands"
+            exit 0
+          fi
+          node -e "const v=require('./verdicts.json'); console.log('compliant:', v.compliant, '| moves:', v.totalMoves, '| through:', v.scannedThroughBlock)"
+
+      - name: Publish to the audit-log ref
+        if: steps.verify.outputs.exit_code != '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "yield-audit-bot"
+          git config user.email "yield-audit-bot@users.noreply.github.com"
+          # Work in a throwaway dir so the main checkout is untouched.
+          tmp="$(mktemp -d)"
+          cp verdicts.json "$tmp/verdicts.json"
+          cd "$tmp"
+          git init -q
+          git checkout -q -b audit-log
+          git add verdicts.json
+          git commit -q -m "audit: $(node -e "const v=require('./verdicts.json');process.stdout.write((v.compliant?'COMPLIANT':'VIOLATION')+' — '+v.totalMoves+' moves @ '+v.scannedThroughBlock)")"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" audit-log:audit-log

@@ -11,6 +11,9 @@ import {
 } from './config.js';
 import type { Verdict } from './types.js';
 
+/** Bumped with releases; printed in verdicts + the terminal footer for reproducibility. */
+const VERIFIER_VERSION = '0.1.0';
+
 /**
  * The judge's first touch (§18.2c). Zero-config: `npx -y @yield-cfo/mandate-verify` verifies
  * YIELD's live mandate with compiled-in defaults — no prompts, no env. Exit codes:
@@ -152,7 +155,12 @@ async function main(): Promise<number> {
   }
 
   if (args.json) {
-    process.stdout.write(toJson(verdict) + '\n');
+    // Stamp run metadata here (the I/O layer) — the pure core stays clock-free. This is what the
+    // nightly CI publishes to the audit-log ref and the dashboard reads for its freshness eyebrow.
+    const record = JSON.parse(toJson(verdict)) as Record<string, unknown>;
+    record.runAt = new Date().toISOString();
+    record.version = `mandate-verify@${VERIFIER_VERSION}`;
+    process.stdout.write(JSON.stringify(record, null, 2) + '\n');
   } else {
     process.stdout.write(renderVerdict(verdict));
   }
