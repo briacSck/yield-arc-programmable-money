@@ -145,8 +145,17 @@ export async function runCycle(deps: CycleDeps): Promise<EventLogRecord> {
   }
 
   const written = deps.log.append(record);
-  if (gasExhausted) {
-    // Default to the real /fail ping — a gas-dead agent must never look green.
+
+  // Liveness signal (§15.4). Two conditions must turn the monitor RED, not just gas death:
+  //   (a) gas exhaustion — a gas-dead agent must never look green (existing rule); and
+  //   (b) a FAILED storm — three consecutive FAILED cycles. `cycle inputs failed` (a dead RPC,
+  //       a bad deploy) writes a *fresh* FAILED record every tick, so a naive success-ping keeps
+  //       healthchecks.io green over a fully dead loop. This exact blind spot silently held the
+  //       live worker in degraded-HOLD for 759 cycles (2026-07-15 → 07-23). SAME predicate as
+  //       computeHealth's `failStorm` (server.ts) — one definition of "the agent is down".
+  const tail = deps.log.readAll().slice(-3);
+  const failStorm = tail.length === 3 && tail.every((r) => r.status === 'FAILED');
+  if (gasExhausted || failStorm) {
     await (deps.pingFail ? deps.pingFail() : (await import('./heartbeat.js')).pingFail());
   } else {
     await (deps.ping ? deps.ping() : (await import('./heartbeat.js')).ping());

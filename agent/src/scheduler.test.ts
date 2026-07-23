@@ -89,6 +89,59 @@ test('gas guard: gasOk=false forces HOLD, fires the FAIL ping, never touches the
   assert.equal(okPings, 0);
 });
 
+test('FAILED storm: 3 consecutive cycle-input failures fire the FAIL ping (RPC-death blind spot)', async () => {
+  // Regression for the 759-cycle silent outage (2026-07-15→07-23): a dead RPC writes a fresh
+  // FAILED record every tick, and the old success-ping kept the monitor green over a dead loop.
+  const log = new EventLog(path.join(tmpDir(), 'event-log.jsonl'));
+  let failPings = 0;
+  let okPings = 0;
+  const d = (): CycleDeps =>
+    deps({
+      log,
+      gather: () => {
+        throw new Error('RPC Request failed. request limit reached');
+      },
+      ping: async () => void (okPings += 1),
+      pingFail: async () => void (failPings += 1),
+    });
+
+  const r1 = await runCycle(d());
+  const r2 = await runCycle(d());
+  assert.equal(r1.status, 'FAILED');
+  // First two FAILED cycles are within tolerance (transient) — success ping, monitor rides the grace period.
+  assert.equal(failPings, 0);
+  assert.equal(okPings, 2);
+
+  const r3 = await runCycle(d());
+  assert.equal(r3.status, 'FAILED');
+  // Third consecutive FAILED = a storm: the monitor must go RED now, not stay green.
+  assert.equal(failPings, 1);
+  assert.equal(okPings, 2);
+});
+
+test('recovery: a healthy cycle after a storm returns to the success ping', async () => {
+  const log = new EventLog(path.join(tmpDir(), 'event-log.jsonl'));
+  let failPings = 0;
+  let okPings = 0;
+  const failing = (): CycleDeps =>
+    deps({
+      log,
+      gather: () => {
+        throw new Error('RPC Request failed.');
+      },
+      ping: async () => void (okPings += 1),
+      pingFail: async () => void (failPings += 1),
+    });
+  for (let i = 0; i < 3; i++) await runCycle(failing());
+  assert.equal(failPings, 1);
+
+  // A recovered cycle (gather succeeds) breaks the 3-FAILED tail ⇒ success ping resumes.
+  // okPings so far = 2 (cycles 1–2, within tolerance); the storm cycle 3 pinged FAIL, not OK.
+  await runCycle(deps({ log, ping: async () => void (okPings += 1), pingFail: async () => void (failPings += 1) }));
+  assert.equal(failPings, 1); // no new FAIL ping — the storm is broken
+  assert.equal(okPings, 3); // 2 pre-storm + 1 recovery
+});
+
 test('cooldown: a second money move inside the window is SKIPPED, not executed', async () => {
   const log = new EventLog(path.join(tmpDir(), 'event-log.jsonl'));
   const mock = new MockChainExecutor();

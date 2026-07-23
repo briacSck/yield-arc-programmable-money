@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { createPublicClient, http, parseAbi, type PublicClient } from 'viem';
+import { createPublicClient, parseAbi, type PublicClient } from 'viem';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
-import { defineArcChain } from './chain/arc-chain.js';
+import { arcTransport, defineArcChain } from './chain/arc-chain.js';
 import { selectChainExecutor } from './chain/index.js';
 import { EventLog } from './event-log.js';
 import { ForecastStore } from './forecast-store.js';
@@ -44,7 +44,9 @@ export function arcClient(env: NodeJS.ProcessEnv = process.env): PublicClient {
   if (!sharedClient) {
     sharedClient = createPublicClient({
       chain: defineArcChain(env),
-      transport: http(env.ARC_RPC_URL),
+      // Endpoint POOL, not one host: a single rate-limited RPC silently held the loop in
+      // degraded-HOLD for 759 cycles (see arc-chain.ts). Liveness is a transport property.
+      transport: arcTransport(env),
     });
   }
   return sharedClient;
