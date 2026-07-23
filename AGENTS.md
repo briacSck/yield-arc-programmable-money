@@ -1,8 +1,10 @@
 # AGENTS.md — yield-agentic-cfo (Arc hackathon)
 
 > Committed on purpose: every clone (and every teammate's Claude Code session) bootstraps from the
-> same rules and state. The strategy doc (`docs/PLAN.md`) stays gitignored/local — ask Briac for
-> the share copy. This repo is PUBLIC: build state belongs here, strategy never does.
+> same rules and state. The strategy doc (`docs/PLAN.md`) and the ERC draft (`docs/ERC-DRAFT.md`)
+> stay gitignored/local — ask Briac for the share copies (the ERC draft is private until Demo Day,
+> §18.3). The sanitized `docs/PLAN.public.md` IS committed for collaborators. This repo is PUBLIC:
+> build state belongs here, strategy never does.
 
 ## Project
 

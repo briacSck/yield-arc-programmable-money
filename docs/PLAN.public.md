@@ -229,13 +229,15 @@ work (ERC-8183) · stewardship (this)**. Business spine: **bounded ⇒ insurable
    failure ever renders red — red means the verifier spoke** (the proxy validates the feed and
    returns null on anything malformed). Verdicts arrive via nightly CI (`nightly-audit.yml`) →
    `audit-log` ref → proxy splice into `/api/events`, joined dashboard-side on `txHash`. Live now.
-3. **ERC draft** (in-repo markdown): interface + invariants + security considerations + a **prior-art
-   falsification section** that formally attempts expressing floor/caps/asymmetry/receipts in AP2,
-   Permit2/session keys, ERC-8183 SLA terms, **and the DeFi manager-policy frameworks that are the
-   actual closest prior art** (Enzyme policy manager, Gnosis Zodiac Roles Modifier, dHEDGE/Set
-   constraints). Stated up front: bounds-on-discretion alone won't survive; the surviving claim is
-   the triple — **decision receipts + asymmetric post-revocation authority + on-chain agent
-   identity, machine-checkable over full history**.
+3. **ERC draft** (✅ DRAFTED 2026-07-23, v0.1): interface + 5 invariants + exact tumbling-window
+   pseudocode + receipt derivation + normative conformance vectors + a **prior-art falsification
+   section** that formally attempts expressing floor/caps/asymmetry/receipts in AP2, Permit2/session
+   keys, ERC-8183 SLA terms, **and the DeFi manager-policy frameworks that are the actual closest
+   prior art** (Enzyme policy manager, Gnosis Zodiac Roles Modifier, dHEDGE/Set). Stated up front:
+   bounds-on-discretion alone won't survive; the surviving claim is the triple — **decision receipts
+   + asymmetric post-revocation authority + on-chain agent identity, machine-checkable over full
+   history**. _Draft is held private until Demo Day per the disclosure strategy; the reference
+   implementation (live `AgentMandate`) and checker (`@yield-cfo/mandate-verify`) are already public._
 
 **18.2 W3 deliverables (gated, priority order):**
 

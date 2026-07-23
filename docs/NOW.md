@@ -4,7 +4,26 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-23 (worker revived + dashboard v2 audit surface live + verifier hardened by /review + USYC allowlist confirmed)_
+_Last updated: 2026-07-23 EOD (worker revived + dashboard v2 audit live + verifier hardened & publish-ready + USYC round-trip proven + heartbeat alert VERIFIED + ERC draft written)_
+
+## Session wrap 2026-07-23 — where the next session picks up
+
+**CP2 A-floor is done** (deadline Mon Jul 27 13:59 Paris). This session, in order: found + fixed an
+8-day silent RPC outage (worker revived, first WITHDRAW landed 18:24); shipped the verifier
+(`@yield-cfo/mandate-verify`, live 5/5 in ~3s) + dashboard v2 audit surface; hardened both via
+`/review` (8 findings fixed); proved the USYC venue on-chain (mint+redeem round-trip) + built the
+`IVenue` seam; **verified the heartbeat alert fires end-to-end** (controlled `/fail` → alert channel
+confirmed buzzing — the outage class can't recur silently now); wrote the **ERC draft** (private).
+
+**Handed off / next-session items:**
+- **npm publish** `@yield-cfo/mandate-verify` → CTO (auth-only; `verifier/PUBLISH.md` has the exact
+  steps — token or CI/provenance). Package is fully built + bundled + pushed.
+- **ERC draft** lives at `docs/ERC-DRAFT.md` — **LOCAL/gitignored, private until Demo Day** (§18.3).
+  Briac to skim the falsification section (Meridian/Firmata positioning is his call).
+- **CP2 submission** (Briac handles; may ask for presentation help over the weekend). Deck link +
+  code link + tracks (DeFi + Agentic Economy).
+- Still gated: wire USYC behind the mandate seam (untouchable path, team nod); second implementer +
+  attestations (W3).
 
 ## 🔴 INCIDENT — Tier-1 worker was silently dead 8 days (2026-07-15 → 07-23) — FIXED
 
@@ -31,7 +50,9 @@ once via CLI on Jul 14 and never re-deployed) — deployed manually via `railway
 on-chain **WITHDRAW 1.859676 USDC** at 18:24 (`onChainMoves` 1→2, mandate reads LIVE again); the
 loop is deciding from live chain state and landing moves once more. **Chaos-drill lesson (§15.4):**
 the Friday drill kills the worker and checks the alert — it never caught this because the process
-stayed *up* while every cycle failed. The failStorm ping closes that exact hole.
+stayed *up* while every cycle failed. The failStorm ping closes that exact hole. **VERIFIED
+end-to-end 2026-07-23:** a controlled `/fail` ping (healthchecks.io / hc-ping.com) fired the alert
+channel — confirmed received. The alerting chain works; the outage class can no longer stay silent.
 
 ## Dashboard v2 — machine-audit surface LIVE (2026-07-23)
 
