@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+// The shebang is added by the esbuild bundle banner (see package.json build) so it lands on line 1
+// of dist/cli.js exactly once. Kept out of source to avoid a double-shebang in the bundle.
 import { replay } from './core/replay.js';
 import { fetchHistory } from './fetch.js';
 import { loadFixture, FIXTURE_NAMES, type FixtureName } from './fixtures.js';

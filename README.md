@@ -10,18 +10,24 @@ signed under a **verifiable on-chain agent identity (ERC-8004)**.
 
 **🟢 LIVE — trading autonomously on Arc testnet since July 14, 2026, no human in the loop.**
 
+[![nightly audit](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml/badge.svg)](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml)
+[![npm](https://img.shields.io/npm/v/@yield-cfo/mandate-verify?color=2a5547&label=mandate-verify)](https://www.npmjs.com/package/@yield-cfo/mandate-verify)
+
 - **Live dashboard:** https://dashboard-production-abea.up.railway.app — every decision, its
-  reason sentence, and its on-chain receipt, with explorer links.
+  reason sentence, and its on-chain receipt, with explorer links, plus a **machine-audit
+  scoreboard**: 5 invariant chips checked nightly by the verifier.
 - **The mandate (on-chain):** [`0x856bec6faadd61b583430e0cd22ec2e211c782b4`](https://testnet.arcscan.app/address/0x856bec6faadd61b583430e0cd22ec2e211c782b4)
   — floor, per-ticket cap, 24h budget, owner-revocable.
 - **Agent identity:** ERC-8004 agentId `850878` · agent wallet [`0x93d9…ab7c`](https://testnet.arcscan.app/address/0x93d9c11c8e9e23e1e97e855668a27a14accaab7c)
   (Circle developer-controlled wallet).
-- **Machine-checked autonomy — LIVE:** `npx -y @yield-cfo/mandate-verify` replays the agent's
-  FULL on-chain history and machine-checks every move against the mandate's five invariants
-  (floor / ticket / budget window / post-revocation asymmetry / decision receipts) — the live
-  history verifies **5/5 COMPLIANT in ~6 s**. See a violating agent fail the same audit:
+- **Machine-checked autonomy — one command:**
+  ```bash
+  npx -y @yield-cfo/mandate-verify
+  ```
+  replays the agent's FULL on-chain history and machine-checks every move against the mandate's
+  five invariants (floor / ticket / budget window / post-revocation asymmetry / decision receipts)
+  — the live history verifies **5/5 COMPLIANT in ~3 s**. See a violating agent fail the same audit:
   `npx -y @yield-cfo/mandate-verify --fixture naive-agent`. Source + trust ladder: [`verifier/`](verifier/).
-  (npm publish + nightly-audit badge land at CP2; the command runs from source today.)
 
 Built on: **Circle Wallets** (developer-controlled, MPC) · **Circle Contracts (SCP)** ·
 **native-USDC gas on Arc** · **ERC-8004 identity** · ERC-8183 (agent-to-agent settlement, W3).
