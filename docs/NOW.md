@@ -4,7 +4,67 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-22 (The Underwriter — W3 §18 CMA beat shipped; Tier-1 live and untouched)_
+_Last updated: 2026-07-23 (INCIDENT + FIX: 8-day RPC outage on the live worker — revived; verifier track started)_
+
+## 🔴 INCIDENT — Tier-1 worker was silently dead 8 days (2026-07-15 → 07-23) — FIXED
+
+**Found + fixed 2026-07-23.** The live worker logged **759 consecutive FAILED cycles** since
+2026-07-15T12:20 UTC — every one `HOLD: cycle inputs failed (RPC Request failed. request limit
+reached)`. Last healthy decision: 2026-07-15T12:05. The agent behaved **correctly** (invariant #4:
+degraded input → HOLD; it never moved money on bad data); the fault was operational, and **two
+single points of failure** hid it:
+
+1. **One RPC host.** The worker ran `ARC_RPC_URL=https://rpc.testnet.arc.network` alone. Measured
+   2026-07-23 against the live mandate: that endpoint + 3 of 4 public Arc endpoints rate-limit
+   `eth_getLogs`/`eth_call` at ~1 req/s; **only `rpc.drpc.testnet.arc.io` answered 10/10
+   concurrent.** Fix: `arcTransport()` in `agent/src/chain/arc-chain.ts` — an ordered viem
+   `fallback` across all working endpoints, wired into the worker read client. `ARC_RPC_URL` is now
+   *prepended* as a preference, never the whole pool, so an override can't re-create the SPOF.
+2. **Heartbeat blind spot.** `pingFail` fired ONLY on gas exhaustion; a `cycle inputs failed` storm
+   pinged SUCCESS every tick → healthchecks.io stayed green over a dead loop. Fix: 3 consecutive
+   FAILED cycles now ping `/fail` (same `failStorm` predicate as `computeHealth`). +2 regression
+   tests. Money-path (scheduler/decision/executor) logic untouched — only the monitoring branch.
+
+Shipped in `50326a2` on `main` (Railway auto-deploy). **Post-fix live state:** company 6.0 /
+deployed 4.0 / floor 5.0 USDC — a dry observe-mode cycle against live chain now yields
+`WITHDRAW 1.859676 USDC` (P10 below floor within 30d), the first real move queued after the gap.
+**Chaos-drill lesson (§15.4):** the Friday drill kills the worker and checks the alert — it never
+caught this because the process stayed *up* while every cycle failed. The failStorm ping closes
+that exact hole.
+
+## The Verifier — core shipped (2026-07-23) — the W2 star
+
+**`@yield-cfo/mandate-verify` runs end-to-end against the LIVE chain: full history, 5/5 COMPLIANT,
+~6 s.** The CP2 A-floor is met from source today (npm publish + nightly-audit badge are the
+remaining CP2 items). Built exactly to the §18.1.2b two-layer spec.
+
+- **Pure replay core** (`verifier/src/core/replay.ts`) — the entire trust surface, zero I/O.
+  Reconstructs mandate state event-by-event and re-derives the EXACT predicate the contract
+  enforced at each move. Invariant 3 is the exact lazy tumbling-window replay (not a naive rolling
+  sum — that false-positives on legal history). 17 tests: one violating fixture per invariant (the
+  negative demo) **+** the compliant-adversarial suite that a naive verifier would wrongly flag
+  (legal 2× window-boundary burst, cap exactly filled, balance exactly at floor, setMandate
+  mid-window, emergencyWithdrawAll→refund→deploy, revoke→withdraw→reinstate, one-block multi-deploy)
+  **+** a **golden test against real testnet history**.
+- **Receipt check is PURE-CHAIN** — a discovery this session: the on-chain `forecastHash` arg IS
+  the `forecastInputsHash` that seeds `decisionId = keccak(forecastHash|kind)`
+  (circle-chain-executor.ts:135), verified against all 4 live events. So receipt integrity needs
+  **no preimage API at all** — stronger than the plan assumed (the `GET /forecasts` worker route is
+  now a *nice-to-have* for full preimage disclosure, not a blocker for invariant 5).
+- **fetch layer** (`verifier/src/fetch.ts`) — one address-only `getLogs` per 10k-block chunk,
+  `parseEventLogs({strict:false})` (tolerates Arc EIP-7708 native-transfer logs), ordered by
+  `(blockNumber, logIndex)`, chainId preflight (a wrong `--rpc` can't fake "vacuously compliant").
+  Same measured dRPC-first endpoint pool as the worker fix.
+- **Judge DX** (`verifier/src/cli.ts`) — zero-config default (compiled-in mandate/deploy-block/pool),
+  `--fixture naive-agent` (negative demo, exits 1) · `--fixture live-snapshot` (offline, exits 0) ·
+  `--address`/`--deploy-block` (any conforming deployment) · `--json` · exit codes 0/1/2 · streamed
+  progress · screenshot-able COMPLIANT footer with dashboard + explorer URLs.
+- **Live verdict 2026-07-23:** `4 moves × 5 invariants, 0 violations`; closest approach **$1.00
+  above floor** (a real reconstructed stat, not hardcoded). Deploy block **51743317** (Jul 14
+  08:21 UTC), pinned as a package constant.
+- **Still ahead for CP2/W3:** npm publish (`--provenance`) · nightly-audit CI → `audit-log` ref →
+  dashboard `/api/events` `audit` block + scoreboard band (the design-pinned audit surface) ·
+  `GET /forecasts?inputsHash` worker route for full preimage disclosure · ERC draft. See `TODOS.md`.
 
 ## The Underwriter — CMA beat shipped (2026-07-22)
 
