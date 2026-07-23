@@ -1,0 +1,14 @@
+{
+  "_comment": "SYNTHETIC — a naive unbounded treasury agent, for contrast. NOT YIELD's history. This history is one the frozen AgentMandate could never emit (its gates would revert every violating move); it exists only to prove the verifier CATCHES what an unbounded agent does. Powers `--fixture naive-agent`, the negative demo (§18.1.1). Same audit UI, red instead of green.",
+  "mandateAddress": "0x0000000000000000000000000000000000000dead",
+  "chainId": 5042002,
+  "deployBlock": "1",
+  "events": [
+    { "blockNumber": "1", "logIndex": 0, "timestamp": "1784000000", "name": "MandateChanged", "args": { "floor": "5000000", "maxTicket": "2000000", "dailyCap": "5000000" } },
+    { "blockNumber": "2", "logIndex": 0, "timestamp": "1784000010", "name": "CompanyFunded", "args": { "amount": "10000000", "newCompanyBalance": "10000000" } },
+    { "blockNumber": "10", "logIndex": 0, "timestamp": "1784000100", "name": "DecisionExecuted", "args": { "decisionId": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef0", "kind": 0, "amount": "6000000", "forecastHash": "0x1111111111111111111111111111111111111111111111111111111111111111" } },
+    { "blockNumber": "20", "logIndex": 0, "timestamp": "1784000200", "name": "DecisionExecuted", "args": { "decisionId": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef0", "kind": 0, "amount": "3000000", "forecastHash": "0x2222222222222222222222222222222222222222222222222222222222222222" } },
+    { "blockNumber": "30", "logIndex": 0, "timestamp": "1784000300", "name": "Revoked", "args": { "by": "0x4704fB05a6e87C482090cF5534E86c9ab44bBFda" } },
+    { "blockNumber": "40", "logIndex": 0, "timestamp": "1784000400", "name": "DecisionExecuted", "args": { "decisionId": "0xbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadba", "kind": 0, "amount": "1000000", "forecastHash": "0x3333333333333333333333333333333333333333333333333333333333333333" } }
+  ]
+}
