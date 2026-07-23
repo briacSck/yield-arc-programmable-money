@@ -182,8 +182,11 @@ FAILED → throw → HOLD + alert (never blind-retry a money movement).
 
 **17.4 Yield venue:** default **USYC** (real tokenized-MMF testnet primitive) behind the
 `ChainExecutor`/mandate seam, gated on allowlisting; fallback is an explicitly-labeled DEMO ACCRUAL
-(never display fake yield as real). _Allowlist status has an open USDC-vs-USYC ambiguity — see
-TODOS._
+(never display fake yield as real). **Allowlist CONFIRMED on-chain 2026-07-23** — the USYC Teller
+(`0x9fdF…C105A`) is an ERC-4626 vault (asset = USDC, share = USYC) and exposes the allowlist as
+views; the agent wallet reads `subscriptionLimitRemaining` = 1,000,000 USDC/day. Test kit:
+`agent/scripts/usyc-mint-test.ts` (read-only preflight + guarded `--execute` mint). Real USDC→USYC
+mint pending a deliberate run; then swap the venue box behind the seam.
 
 **17.5 Toolchain:** Hardhat (proven `arc-verify.yml` real-EVM CI is the source of truth — local
 anvil/hardhat-network cannot reproduce Arc semantics: native-USDC rules, `PREVRANDAO`=0, EIP-7708
@@ -215,12 +218,13 @@ work (ERC-8183) · stewardship (this)**. Business spine: **bounded ⇒ insurable
      exit codes 0 (compliant) / 1 (violation) / 2 (operational). Deploy block **51743317** pinned.
    - **Remaining for CP2:** npm publish (`--provenance`), nightly-audit CI → `audit-log` git ref →
      dashboard `audit` block, the design-pinned scoreboard band. See TODOS.
-2. **Audit surface** on the dashboard — a scoreboard band above the decision log (5 invariant chips +
-   "N moves × 5 invariants — 0 violations" + closest-approach-to-floor stat) + per-row verdict chips.
-   Vocabulary: `PASS / VIOLATION / PENDING / UNVERIFIED` — never "FAIL(ED)"; a post-revoke blocked
-   move renders `BLOCKED — mandate enforced` in sage. **No data-plumbing failure ever renders red —
-   red means the verifier spoke.** Verdicts arrive via nightly CI → `audit-log` ref → proxy splice
-   into `/api/events`, joined dashboard-side on `txHash`.
+2. **Audit surface** on the dashboard (✅ SHIPPED 2026-07-23) — a scoreboard band above the decision
+   log (5 invariant chips + "N moves × 5 invariants — 0 violations" + closest-approach-to-floor stat)
+   + hero wiring (the claim strip's first number IS the machine verdict) + per-row verdict chips.
+   Vocabulary: `PASS / VIOLATION / PENDING / UNVERIFIED` — never "FAIL(ED)". **No data-plumbing
+   failure ever renders red — red means the verifier spoke** (the proxy validates the feed and
+   returns null on anything malformed). Verdicts arrive via nightly CI (`nightly-audit.yml`) →
+   `audit-log` ref → proxy splice into `/api/events`, joined dashboard-side on `txHash`. Live now.
 3. **ERC draft** (in-repo markdown): interface + invariants + security considerations + a **prior-art
    falsification section** that formally attempts expressing floor/caps/asymmetry/receipts in AP2,
    Permit2/session keys, ERC-8183 SLA terms, **and the DeFi manager-policy frameworks that are the

@@ -4,7 +4,7 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-23 (INCIDENT + FIX: 8-day RPC outage on the live worker — revived; verifier track started)_
+_Last updated: 2026-07-23 (worker revived + dashboard v2 audit surface live + verifier hardened by /review + USYC allowlist confirmed)_
 
 ## 🔴 INCIDENT — Tier-1 worker was silently dead 8 days (2026-07-15 → 07-23) — FIXED
 
@@ -25,12 +25,41 @@ single points of failure** hid it:
    FAILED cycles now ping `/fail` (same `failStorm` predicate as `computeHealth`). +2 regression
    tests. Money-path (scheduler/decision/executor) logic untouched — only the monitoring branch.
 
-Shipped in `50326a2` on `main` (Railway auto-deploy). **Post-fix live state:** company 6.0 /
-deployed 4.0 / floor 5.0 USDC — a dry observe-mode cycle against live chain now yields
-`WITHDRAW 1.859676 USDC` (P10 below floor within 30d), the first real move queued after the gap.
-**Chaos-drill lesson (§15.4):** the Friday drill kills the worker and checks the alert — it never
-caught this because the process stayed *up* while every cycle failed. The failStorm ping closes
-that exact hole.
+Shipped in `50326a2` on `main`. **Railway did NOT auto-deploy from main** (the worker was deployed
+once via CLI on Jul 14 and never re-deployed) — deployed manually via `railway up --service worker`
+2026-07-23 ~18:23 UTC. **REVIVED + VERIFIED:** the first cycle on the new code executed a real
+on-chain **WITHDRAW 1.859676 USDC** at 18:24 (`onChainMoves` 1→2, mandate reads LIVE again); the
+loop is deciding from live chain state and landing moves once more. **Chaos-drill lesson (§15.4):**
+the Friday drill kills the worker and checks the alert — it never caught this because the process
+stayed *up* while every cycle failed. The failStorm ping closes that exact hole.
+
+## Dashboard v2 — machine-audit surface LIVE (2026-07-23)
+
+**The verifier's proof is now on the judge screen.** Deployed via `railway up --service dashboard`;
+the public `/api/events` serves an `audit` block (COMPLIANT · 5 moves × 5 invariants · 0 violations
+· closest approach $1.00 · 5 verdicts joined by txHash). Built to the §18.2 spec:
+- **Scoreboard band** above the decision log (5 invariant chips, magnitude headline, closest-approach,
+  inline `npx -y @yield-cfo/mandate-verify`), **hero wiring** (the claim strip's first number is now
+  the machine verdict, not a hardcoded `0`), **per-row verdict chips** (join on txHash, supersede the
+  client receipt badge; PENDING past the coverage boundary).
+- **Data seam:** the proxy fetches `verdicts.json` from the `audit-log` git ref (raw.githubusercontent),
+  spliced in parallel with the worker read; every failure path returns null — no plumbing failure ever
+  renders red. **Nightly-audit CI** (`nightly-audit.yml`) runs the verifier and appends to the
+  `audit-log` ref (07:17 UTC + `workflow_dispatch`). Seeded 2026-07-23.
+- **Hardened by `/review`** (two independent adversarial reviewers, 8 findings fixed in `275d789`):
+  wrong-verdict guard (unseeded scan → exit 2), dashboard crash + green-spoof on malformed feed,
+  CI history-destruction (force-push → append), bounded getBlock. Verifier 19/19 tests green.
+
+## USYC venue — allowlist CONFIRMED on-chain (2026-07-23)
+
+**The agent wallet IS allowlisted for USYC** — settled read-only, no email round-trip. The USYC
+Teller (`0x9fdF…C105A`, an ERC-4626 vault; asset = USDC, share = USYC ✓) exposes the allowlist as
+views: agent wallet `subscriptionLimitRemaining` = **1,000,000 USDC/day**, `maxDeposit` = full USDC
+balance. Circle's confirmation email said "USDC allowlist" but functionally USYC subscription is
+enabled. Test kit: `agent/scripts/usyc-mint-test.ts` — read-only preflight by default (proves
+allowlist, moves nothing); `--execute --amount <n>` does a real USDC→USYC mint via the Circle wallet
+(gas-reserve guarded). **Not yet executed** — a real mint moves the live agent wallet's gas funds;
+run deliberately. This is the seam to flip the venue from disclosed stub to real (§17.4).
 
 ## The Verifier — core shipped (2026-07-23) — the W2 star
 

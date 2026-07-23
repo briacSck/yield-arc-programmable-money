@@ -50,6 +50,14 @@ executor path — do not modify money-moving code without Briac's explicit go. T
 surface (`agent/src/server.ts`) MAY gain additive read-only routes (that's the sanctioned seam);
 any worker redeploy restarts the loop (it's restart-safe by design, but coordinate).
 
+**Railway deploys are MANUAL, not auto-from-`main`** (gotcha proven 2026-07-23 — a fix on `main` sat
+undeployed while the worker ran 8-day-old code). Deploy with `railway up --service worker` or
+`railway up --service dashboard` (uploads the current working dir; Railpack build via the root
+`scripts/railway-*.mjs` dispatchers). A failed build keeps the old deployment running. **RPC
+liveness is a pool, not a host** — the worker reads through a viem `fallback` across Arc endpoints
+(`agent/src/chain/arc-chain.ts`); only `rpc.drpc.testnet.arc.io` serves concurrent `eth_getLogs`,
+the rest rate-limit ~1 req/s. Never wire a single `ARC_RPC_URL` as the sole endpoint again.
+
 ## Commands
 
 ```bash
@@ -57,7 +65,8 @@ npm install                          # workspace install
 npm run typecheck --workspaces       # all workspaces
 npm test --workspaces --if-present   # shared + agent + forecast (contracts run in CI)
 npm start --workspace agent          # the Tier-1 loop (SCHEDULER_MODE=observe by default)
-npx tsx agent/scripts/<script>.ts    # ops scripts: circle-setup, deploy-mandate, register-identity, e2e-first-decision
+npx tsx agent/scripts/<script>.ts    # ops scripts: circle-setup, deploy-mandate, register-identity, e2e-first-decision, usyc-mint-test
+npx tsx verifier/src/cli.ts          # @yield-cfo/mandate-verify — live 5/5 in ~6s (--fixture naive-agent for the negative demo)
 ```
 
 ## Environment (names only — see .env.example; secrets live in each runner's local .env)

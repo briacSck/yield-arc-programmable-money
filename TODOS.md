@@ -2,17 +2,21 @@
 
 Deferred work, captured by /autoplan run 3 (2026-07-14). Items here are consciously out of current scope — not forgotten, not silently dropped.
 
-## Verifier — CP2 finish line (core shipped 2026-07-23, `verifier/`)
-- [ ] **npm publish** `@yield-cfo/mandate-verify` with `--provenance` from Actions + 2FA, zero postinstall. Bundle to a single-file CLI (tsup/esbuild) so cold-cache `npx -y` installs (viem is the only runtime dep; no workspace deps to inline — the package is self-contained). Until published, the command runs from source (`npm run verify -w verifier`).
-- [ ] **Nightly audit CI** → writes `verdicts.json` to a dedicated `audit-log` git ref → dashboard proxy splices an in-band `audit` block into `/api/events` (raw.githubusercontent, not api.github.com). Green badge in README.
-- [ ] **Dashboard audit surface** — the design-pinned scoreboard band (5 invariant chips + "N moves × 5 invariants — 0 violations" + closest-approach stat) above the log + per-row verdict chips. Joined on `txHash` (dashboard has no keccak dep). No plumbing failure ever renders red.
-- [ ] **`GET /forecasts?inputsHash=0x…` worker route** — additive read-only route in `agent/src/server.ts` for full preimage *disclosure* (the "why" behind each move). NOTE: no longer blocks invariant 5 — receipt integrity is pure-chain (`decisionId = keccak(forecastHash|kind)`, confirmed against live events 2026-07-23). This route is now the preimage-explorer nice-to-have, not the verifier's dependency.
-- [ ] Expand the golden snapshot as live history grows (refresh `verifier/fixtures/live-history-*.json` + bump expected counts in `golden.test.ts`).
+## Verifier + audit surface — CP2 finish line (core + dashboard v2 shipped 2026-07-23, hardened by /review)
+- [x] **Dashboard audit surface** — scoreboard band + hero wiring + per-row verdict chips, LIVE (deployed `railway up --service dashboard`). Joined on `txHash`; no plumbing failure renders red.
+- [x] **Nightly audit CI** (`nightly-audit.yml`) → appends `verdicts.json` to the `audit-log` ref → proxy splices the `audit` block (raw.githubusercontent). Seeded; first scheduled run 07:17 UTC.
+- [ ] **npm publish** `@yield-cfo/mandate-verify` with `--provenance` from Actions + 2FA, zero postinstall. Bundle to a single-file CLI (tsup/esbuild) so cold-cache `npx -y` installs (viem is the only runtime dep — self-contained). Until published, runs from source (`npm run verify -w verifier`). **Add the green nightly-audit badge to the README top fold** when published.
+- [ ] **`GET /forecasts?inputsHash=0x…` worker route** — additive read-only route in `agent/src/server.ts` for full preimage *disclosure* (the "why" behind each move). NOTE: no longer blocks invariant 5 — receipt integrity is pure-chain (`decisionId = keccak(forecastHash|kind)`, confirmed against live events 2026-07-23). Nice-to-have, not a dependency.
+- [ ] Expand the golden snapshot as live history grows (refresh `verifier/fixtures/live-history-*.json` + bump expected counts in `golden.test.ts`). Live is now at 5 moves.
+- [ ] **CP2 submission (KR1, deadline Sun Jul 26)** — draft the progress summary + polish the README top fold (claim, `npx -y` block, badge, dashboard link, addresses, three trust tiers). Not yet done.
 
-## Operational (from the 2026-07-23 outage)
-- [ ] **Railway deploy of the RPC-pool fix is PENDING** — `50326a2` is on `main` but the worker did not auto-redeploy; it's still running the single-endpoint code and still failing every cycle. Needs a manual Railway deploy of latest `main` (or confirm which branch/trigger Railway watches). Until then the loop stays dead. See NOW.md incident section.
-- [ ] Confirm the **healthchecks.io** alert now actually fires on a FAILED storm (the fix pings `/fail` on 3 consecutive FAILED; the Friday §15.4 chaos drill should now catch a process-up-but-all-failing state, which it missed for 8 days).
-- [ ] **USYC allowlist ambiguity** — Circle's 2026-07-15 confirmation says "enabled you for the ARC testnet **USDC** allowlist" but the request was **USYC** (the Teller). Confirm USYC specifically before building the venue adapter (§17.4) against it.
+## Operational (from the 2026-07-23 outage) — RESOLVED
+- [x] **Railway deploy** — done. Railway does NOT auto-deploy from `main` (deploys are manual `railway up --service <worker|dashboard>`). Worker + dashboard both redeployed 2026-07-23; loop revived, first WITHDRAW landed 18:24 UTC.
+- [ ] Confirm the **healthchecks.io** alert now actually fires on a FAILED storm (the fix pings `/fail` on 3 consecutive FAILED; the Friday §15.4 chaos drill should now catch a process-up-but-all-failing state, which it missed for 8 days). Wire the worker's `HEARTBEAT_URL` if not already set on Railway.
+
+## USYC venue (§17.4) — allowlist CONFIRMED 2026-07-23
+- [x] **Allowlist confirmed on-chain** (read-only): agent wallet `0x93d9…ab7c` `subscriptionLimitRemaining` = 1,000,000 USDC/day on the Teller `0x9fdF…C105A`. Circle's "USDC allowlist" wording notwithstanding, USYC subscription is enabled. Test kit: `agent/scripts/usyc-mint-test.ts`.
+- [ ] **Execute the real USDC→USYC mint** (`--execute --amount 1`) to prove the venue end-to-end — moves the live agent wallet's gas funds, so run deliberately. Then decide the venue-adapter integration behind the `ChainExecutor`/mandate seam (§17.4) vs keeping the disclosed stub for the demo.
 
 ## Post-hackathon
 - [ ] `/api/events` pagination: `server.ts` caps `limit` at 1000 (~890 records by Demo Day — fine; silently truncating from late August). The verifier is deliberately independent of this route.
