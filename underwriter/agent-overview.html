@@ -1,0 +1,189 @@
+<!doctype html>
+<!-- Copyright 2026 Anthropic PBC -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>the-underwriter — agent schema</title>
+<link rel="stylesheet" href="overview.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── top bar: identity + live state + stat strip ── -->
+  <div class="topbar">
+    <div class="ident">
+      <div class="sigil">🤖</div>
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h1>the-underwriter</h1>
+          <span class="statepill live"><span class="led live"></span>LAUNCHED · LIVE</span>
+        </div>
+        <div class="byline">Claude Managed Agent · Briac · YIELD · created 2026-07-22</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-k">Model</div><div class="stat-v">claude-opus-4-8</div></div>
+      <div class="stat"><div class="stat-k">Runs</div><div class="stat-v">Daily 7:00 <span class="dim">PT</span></div></div>
+      <div class="stat"><div class="stat-k">Agent</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/agents/agent_01CyAge5BGszCsVv7Q1Xkr62">agent_…Xkr62</a> <span class="dim">v1</span></div></div>
+      <div class="stat"><div class="stat-k">Deployment</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a> <span class="dim">daily</span></div></div>
+    </div>
+  </div>
+
+  <p class="problem">An independent underwriter that assesses my live on-chain CFO agent (YIELD) at arm's length and prices insurance for it — bounded ⇒ insurable ⇒ scalable.</p>
+
+  <!-- ── schema: trigger → worker (in its environment) → output & grading ── -->
+  <p class="lane-label">System schema</p>
+  <div class="pipeline">
+
+    <div class="col">
+      <p class="col-title">Trigger</p>
+      <div class="node key grow">
+        <div class="node-head"><span class="node-icon">🗓️</span><h2>Deployment</h2><span class="node-meta">cron · <b>0 7 * * *</b></span></div>
+        <div class="node-body">
+          <div class="field"><div class="field-k">schedule · expression / timezone</div><strong>Every day · 7:00 AM</strong> <span class="sub small">America/Los_Angeles</span></div>
+          <div class="field"><div class="field-k">Status</div><span class="tag good">live · <a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a></span> <span class="small sub">next: 2026-07-23 07:00 PT · manual test run fired ✓</span></div>
+          <div class="field"><div class="field-k">initial_events</div><p class="small sub">Each firing replays the 🎯 outcome (right) into a fresh ▶️ session in the sandbox — nobody at a keyboard.</p></div>
+        </div>
+        <div class="node-foot">▶️ Also runs on demand — <code>LAUNCH.md</code> fires the same agent with the same outcome; a manual deployment run tests the cron before trusting it.</div>
+      </div>
+    </div>
+
+    <div class="joint" aria-hidden="true"></div>
+
+    <div class="col">
+      <p class="col-title">Worker</p>
+      <div class="env-frame">
+        <span class="env-tab">📦 environment · type: cloud · networking: limited (2 hosts) · packages: npm viem</span>
+
+        <div class="node key">
+          <div class="node-head"><span class="node-icon">🤖</span><h2>Agent — the-underwriter</h2><span class="node-meta"><b>claude-opus-4-8</b> · v1 at launch</span></div>
+          <div class="node-body">
+            <div class="field"><div class="field-k">system · the job</div>
+              <p class="small">Fetches the CFO's public dashboard + cross-checks the on-chain AgentMandate contract on Arc testnet, computes risk stats and a disclosed stub-v0 premium, writes a certificate + memo to <code>/mnt/session/outputs/</code>, and keeps a memory-store trend across runs.</p></div>
+          </div>
+        </div>
+
+        <div class="attach-grid">
+          <div class="attach">
+            <h3>🛠️ Tools</h3>
+            <p><code>tools[] · agent_toolset_20260401</code><br><span class="tag on">bash</span><span class="tag on">read</span><span class="tag on">write</span><span class="tag on">edit</span><span class="tag on">glob</span><span class="tag on">grep</span><span class="tag">web_search off</span><span class="tag">web_fetch off</span></p>
+            <p class="small sub" style="margin-top:6px;">web_fetch/web_search disabled on purpose — they carry their own network policy, independent of the environment's allowlist below.</p>
+          </div>
+          <div class="attach">
+            <h3>🧠 Memory store</h3>
+            <p><code>resources[] · memory_store</code> <span class="tag good">read_write</span> <strong>underwriting-history</strong> — every certificate + trend.md; seeded with one synthetic baseline record so run 1 already states a trend.</p>
+          </div>
+          <div class="attach ghost">
+            <h3>🔌 Connectors &amp; 🔐 vaults</h3>
+            <p><code>mcp_servers[]</code> + <code>vault_ids[]</code> — empty by design. Every data source is public read-only HTTP/RPC; zero credentials in v0.</p>
+          </div>
+          <div class="attach ghost">
+            <h3>📄 Skills</h3>
+            <p><code>skills[]</code> — empty; output is plain JSON + markdown.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="joint" aria-hidden="true"></div>
+
+    <div class="col">
+      <p class="col-title">Output &amp; grading</p>
+
+      <div class="node">
+        <div class="node-head"><span class="node-icon">📤</span><h2>Deliverable</h2><span class="node-meta">files api</span></div>
+        <div class="node-body">
+          <p class="small"><code>certificate.json</code> (machine-readable) + <code>memo.md</code> (~1 page) — fetched from the run's outputs.</p>
+          <div class="field"><div class="field-k">Guardrails in effect</div>
+            <span class="tag">max_iterations: 3</span><span class="tag">read-only: HTTP GET / eth_call only, no keys, no transactions</span></div>
+        </div>
+      </div>
+
+      <div class="node key grow">
+        <div class="node-head"><span class="node-icon">🎯</span><h2>Outcome</h2><span class="node-meta"><b>user.define_outcome</b> · max_iterations 3</span></div>
+        <div class="node-body">
+          <p class="small sub" style="margin-bottom:8px;">Your definition of done — <code>rubric.content</code>, graded by the platform every run.</p>
+          <ol class="rubric small">
+            <li>certificate.json written with every required field, real values, no placeholders</li>
+            <li>every checks[].status is strictly PASS | PENDING | UNVERIFIED</li>
+            <li>no data gap is ever framed as a mandate violation</li>
+            <li>premium.formula_version is stub-v0 with disclosed inputs</li>
+            <li>memo.md exists with the preliminary disclaimer</li>
+            <li>trend reflects the memory store, which is updated this run</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── evals + run log ── -->
+  <div class="lane-grid">
+    <div class="lane">
+      <div class="lane-head"><span class="node-icon">📜</span><h2>Sessions · run log</h2><span class="lane-meta">2 runs</span></div>
+      <div class="lane-body">
+        <div class="overflow">
+        <table>
+          <thead><tr><th>Run</th><th>Session</th><th>Rubric</th><th>Verdict</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td>#1 · on-demand</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_011VLTmTzjj1fNKRMRCEchsT">sesn_…chsT</a></td><td>6 criteria</td><td><span class="tag good">satisfied</span></td><td class="sub">14 PASS · 2 PENDING · 1 UNVERIFIED · premium $0.0851/30d · saved as eval case-01.</td></tr>
+            <tr><td>#2 · 🗓️ manual test</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01KVx7iE3rpkAecY58weNm6G">sesn_…Nm6G</a></td><td>6 criteria</td><td><span class="tag">deployment fire ✓</span></td><td class="sub">Proves the daily cron triggers — <span class="mono">drun_…feAZ5</span>.</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-head"><span class="node-icon">🧪</span><h2>Evals</h2><span class="lane-meta">1 case · new agent</span></div>
+      <div class="lane-body">
+        <div class="overflow">
+        <table>
+          <thead><tr><th>Case</th><th>Known-good answer</th><th>Last verdict</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">case-01</td><td>Today's verified certificate + memo (saved as expected.json / expected.md)</td><td><span class="tag good">baseline set ✓</span></td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small sub" style="margin:.5em 0 0;">Brand-new agent — case 1 is saved from today's first verified run and re-run before promoting any future agent version.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── version rail: what ships next ── -->
+  <div class="lane full">
+    <div class="lane-head"><span class="node-icon">🧭</span><h2>Next directions</h2><span class="lane-meta">the version rail</span></div>
+    <div class="lane-body">
+      <div class="rail">
+        <div class="ver">
+          <div class="ver-tag">v1 ✓</div>
+          <div class="ver-what">Machine-verified mode <span class="tag good">shipped</span></div>
+          <div class="ver-why">Live path already wired; offline flip proof added (<span class="mono">proof/simulate-verifier.sh</span>)</div>
+          <div class="ver-how">The day <span class="mono">@yield-cfo/mandate-verify</span> publishes, the next run flips <span class="mono">verification.mode</span> — zero code change</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v2 ✓</div>
+          <div class="ver-what">Bind-coverage, human-gated <span class="tag good">shipped</span></div>
+          <div class="ver-why">On-demand only — session-local tool, off the daily schedule (a gate would hang unattended runs)</div>
+          <div class="ver-how"><span class="mono">bind/bind.sh</span> → propose → <span class="mono">approve</span>/<span class="mono">deny</span>. Demo bind: policy <span class="mono">POL-d2fa68</span></div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v3</div>
+          <div class="ver-what">ERC-8004 registry cross-check</div>
+          <div class="ver-why">Registry + agentId named, but getters/ABI not yet confirmed</div>
+          <div class="ver-how">Confirm the registry ABI, add one more <span class="mono">checks[]</span> entry</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">always</div>
+          <div class="ver-what">Re-run the eval case(s) before promoting a new version</div>
+          <div class="ver-why">Process habit, not a build task</div>
+          <div class="ver-how"><span class="mono">evals/run-evals.sh</span> against the new version; promote only when verdicts hold</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>generated from build-sheet.json by claude code · live runs &amp; traces: <a href="https://platform.claude.com/workspaces/default/agents">open the console</a> (your key's workspace — swap "default" if yours differs) · <a href="viewer/results-viewer.html">📈 results viewer</a></footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "type": "custom",
+  "name": "bind_coverage",
+  "description": "Propose binding an insurance policy for the assessed CFO agent, based on a specific underwriting certificate. Call this ONLY when the certificate meets your bind criteria (verification not failed, no floor breach, not revoked, no core check UNVERIFIED that would materially change risk). This is a human-gated action: after you call it, a human underwriter reviews the proposed terms and either approves (the policy is bound) or declines (stand down and explain). Provide complete, well-reasoned terms — you are proposing, a human disposes.",
+  "input_schema": {
+    "type": "object",
+    "required": ["certificate_id", "premium_30d_usdc", "coverage_limit_usdc"],
+    "properties": {
+      "certificate_id": {"type": "string", "description": "The certificate_id this policy is bound against."},
+      "premium_30d_usdc": {"type": "number", "description": "The 30-day premium in USDC, from the certificate's stub-v0 pricing."},
+      "coverage_limit_usdc": {"type": "number", "description": "The maximum payout this policy would cover — should not exceed max_loss_per_window unless justified."},
+      "window_days": {"type": "integer", "description": "Coverage window in days (default 30).", "default": 30},
+      "rationale": {"type": "string", "description": "One-paragraph plain-English justification: why the risk is bindable and how the terms follow from the certificate."}
+    }
+  }
+}

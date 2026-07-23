@@ -4,7 +4,18 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-14 evening (plan v3 APPROVED — W2 verifier track specced; Tier-1 live and untouched)_
+_Last updated: 2026-07-22 (The Underwriter — W3 §18 CMA beat shipped; Tier-1 live and untouched)_
+
+## The Underwriter — CMA beat shipped (2026-07-22)
+
+**The W3 §18 underwriter beat is live as an independent Claude Managed Agent** (`underwriter/`). A *separate* hosted agent — not the CFO — assesses the mandate at arm's length from public read-only data, prices the disclosed stub premium, and issues a certificate on a daily schedule, graded by its own Outcome rubric. It consumes existing surfaces only; it touches none of the untouchable path.
+
+- **Independent arm's-length assessor**: fetches the public dashboard (`/api/events`), writes its own viem script to cross-check the `AgentMandate` getters on Arc (floor/ticket/dailyCap/revoked/balances) + agent gas, computes risk stats, and prices `premium = f(floor, caps, verified history)` as disclosed `stub-v0`. First run graded **satisfied**; premium **0.0851 USDC/30d**. Output in `underwriter/certificate.json` + `memo.md` (14 PASS / 2 PENDING / 1 UNVERIFIED — data gaps never rendered as violations).
+- **Read-only by construction**: cloud env with `networking: limited` (2 hosts — dashboard + Arc RPC), `web_fetch`/`web_search` disabled, no keys, no transactions. Cannot move money.
+- **Machine-verify wired**: tries `npx -y @yield-cfo/mandate-verify --json` each run and falls back silently on 404 (`degraded-heuristic` today); flips to `machine-verified` with zero code change when the verifier publishes. Offline proof in `underwriter/proof/`.
+- **Human-gated bind** (`underwriter/bind/`): on-demand approve/deny flow for issuing coverage — added session-locally so it stays OFF the unattended daily schedule (an approval gate would hang an unattended run). Demoed end-to-end: policy `POL-d2fa68`.
+- **Runs itself**: daily scheduled deployment 07:00 America/Los_Angeles. Self-contained results viewer in `underwriter/viewer/`.
+- Still roadmap: on-chain parametric-cover escrow + oracle trigger, and Nanopayments/ERC-8183 agent-to-agent premium settlement (see `TODOS.md`).
 
 ## PLAN v3 APPROVED (2026-07-14 evening) — W2 build order
 
@@ -28,6 +39,7 @@ Full spec lives in the local plan (§18, four pinned layers: design/eng/DX/narra
 | Agent wallet (EOA, Circle) | `0x93d9c11c8e9e23e1e97e855668a27a14accaab7c` |
 | Company wallet = owner | `0x4704fb05a6e87c482090cf5534e86c9ab44bbfda` |
 | Railway project | `yield-agentic-cfo` (Briac's Projects): `worker` (loop + /data volume + internal :8787) + `dashboard` (Next, proxies) |
+| **Underwriter (CMA, LIVE)** | agent `agent_01CyAge5BGszCsVv7Q1Xkr62` (v1, claude-opus-4-8) · deployment `depl_01BJhJXeT2EKbqbd53yAaZnX` — daily 07:00 PT · memory store `memstore_01Wz8h7HcwWcUaqqPK2RYxgn` |
 
 ## DAY 2b — what shipped
 

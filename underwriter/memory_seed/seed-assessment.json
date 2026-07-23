@@ -1,0 +1,14 @@
+{
+  "certificate_id": "uw-seed-0",
+  "seeded": true,
+  "issued_at": "2026-07-15T09:00:00-07:00",
+  "note": "Synthetic baseline for demo purposes — not derived from a real assessment. Represents an earlier point with minimal established compliant history (compliant_days=1), so the hazard term (and therefore the premium) is at its highest under the stub-v0 formula. Real runs should show the premium settling downward as compliant history accrues.",
+  "verification": {"mode": "degraded-heuristic", "detail": "seeded baseline, not a real run"},
+  "premium": {
+    "formula_version": "stub-v0",
+    "inputs": {"max_loss_per_window_usdc": 500.0, "hazard": 0.098, "surcharge": 1.0, "compliant_days": 1},
+    "premium_30d_usdc": 49.0,
+    "disclosure": "premium_30d = max_loss_per_window x hazard x surcharge; illustrative seed only"
+  },
+  "trend": {"vs_prior": "n/a — seed record", "prior_certificate_id": null}
+}

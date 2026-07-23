@@ -1,0 +1,5 @@
+Run today's underwriting assessment of the YIELD CFO agent.
+
+Fetch the CFO's public dashboard and cross-check the AgentMandate contract state on the Arc testnet as of right now. Compute this run's risk stats and a stub-v0 premium. Write certificate.json and memo.md to the outputs directory.
+
+Before finalizing, read the underwriting-history memory store for prior assessments and state how today's premium compares to the most recent one. Then append this run's certificate to that memory store and update trend.md.

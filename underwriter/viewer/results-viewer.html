@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Underwriter — results</title>
+<style>
+:root{--bg:#fbf7f0;--card:#fffdf8;--ink:#2b2620;--mut:#8a8072;--line:#e7ddcc;--accent:#c2410c;--good:#15803d;--warn:#b45309}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:32px 20px 56px}
+h1{font-size:24px;margin:0 0 2px}.sub{color:var(--mut);margin:0 0 24px}
+.hero{display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:22px}
+.hero .big{font-size:34px;font-weight:700;color:var(--accent)}.hero .k{color:var(--mut);font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:22px}
+.chart{width:100%;height:auto}
+.line{fill:none;stroke:var(--accent);stroke-width:2.5}
+.dot{fill:var(--accent)}.dot.mv{fill:var(--good)}
+.grid{stroke:var(--line);stroke-width:1}.ylab,.xlab{fill:var(--mut);font-size:11px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.card.seed{opacity:.72;border-style:dashed}
+.chd{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.prem{font-size:22px;font-weight:700;margin:6px 0 4px}.prem .u{font-size:12px;font-weight:400;color:var(--mut)}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line)}
+.pill.good{background:#e7f6ec;color:var(--good);border-color:#bfe3cb}.pill.warn{background:#fdf3e4;color:var(--warn);border-color:#f0dcbd}
+.seedpill{background:#efe9dd;color:var(--mut)}
+.tally{display:flex;gap:6px;margin:4px 0 6px;flex-wrap:wrap}.t{font-size:11px;padding:1px 7px;border-radius:6px}
+.t.pass{background:#e7f6ec;color:var(--good)}.t.pend{background:#fdf3e4;color:var(--warn)}.t.unv{background:#f3ede2;color:var(--mut)}
+.meta{font-size:11.5px;color:var(--mut)}
+.muted{color:var(--mut)}footer{color:var(--mut);font-size:12px;margin-top:20px}
+.leg{display:flex;gap:16px;font-size:12px;color:var(--mut);margin-top:8px}.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+</style></head><body><div class="wrap">
+<h1>The Underwriter — underwriting results</h1>
+<p class="sub">YIELD CFO agent · premium trend across assessments · self-contained snapshot (no live key)</p>
+<div class="hero"><div><div class="k">Latest 30-day premium</div><div class="big">0.0851 USDC</div><div class="meta">degraded-heuristic</div></div>
+<div><div class="k">Priced runs</div><div class="big">2</div></div>
+<div><div class="k">Thesis</div><div style="font-weight:600">bounded ⇒ insurable ⇒ scalable</div></div></div>
+<div class="panel"><div class="k" style="color:var(--mut);font-size:13px;margin-bottom:6px">Premium (USDC / 30 days)</div>
+<svg viewBox="0 0 720 260" class="chart" role="img" aria-label="Premium trend"><line x1="56" y1="216.0" x2="696" y2="216.0" class="grid"/><text x="48" y="220.0" class="ylab" text-anchor="end">0.0723</text><line x1="56" y1="120.0" x2="696" y2="120.0" class="grid"/><text x="48" y="124.0" class="ylab" text-anchor="end">0.0851</text><line x1="56" y1="24.0" x2="696" y2="24.0" class="grid"/><text x="48" y="28.0" class="ylab" text-anchor="end">0.0978</text><polyline points="56.0,120.0 696.0,120.0" class="line"/><circle cx="56.0" cy="120.0" r="5" class="dot"><title>uw-2026-07-22-42569c04: 0.0851 USDC (degraded-heuristic)</title></circle><text x="56.0" y="234.0" class="xlab" text-anchor="middle">2026-07-22</text><circle cx="696.0" cy="120.0" r="5" class="dot"><title>uw-2026-07-22-8baae5ae: 0.0851 USDC (degraded-heuristic)</title></circle><text x="696.0" y="234.0" class="xlab" text-anchor="middle">2026-07-22</text></svg>
+<div class="leg"><span><span class="sw" style="background:var(--accent)"></span>degraded-heuristic</span><span><span class="sw" style="background:var(--good)"></span>machine-verified</span></div></div>
+<div class="cards"><div class="card"><div class="chd"><b>uw-2026-07-22-8baae5ae</b><span class="pill warn">degraded-heuristic</span></div>
+      <div class="prem">0.0851 <span class="u">USDC/30d</span></div>
+      <div class="tally"><span class="t pass">14 PASS</span><span class="t pend">2 PENDING</span><span class="t unv">1 UNVERIFIED</span></div>
+      <div class="meta">2026-07-22 14:20:56 · closest-to-floor 1.0 USDC · cap util 99.72% · not revoked</div></div><div class="card"><div class="chd"><b>uw-2026-07-22-42569c04</b><span class="pill warn">degraded-heuristic</span></div>
+      <div class="prem">0.0851 <span class="u">USDC/30d</span></div>
+      <div class="tally"><span class="t pass">14 PASS</span><span class="t pend">2 PENDING</span><span class="t unv">1 UNVERIFIED</span></div>
+      <div class="meta">2026-07-22 14:14:48 · closest-to-floor 1.0 USDC · cap util 99.72% · not revoked</div></div><div class="card seed"><div class="chd"><b>Baseline</b><span class="pill seedpill">seed</span></div>
+        <div class="prem">49.0000 <span class="u">USDC/30d</span></div>
+        <div class="meta">synthetic starting point — not a real assessment</div></div></div>
+<footer>Generated by viewer/build-viewer.sh from live certificates via the Files/Sessions API · re-run to refresh · data baked in, opens offline.</footer>
+</div></body></html>

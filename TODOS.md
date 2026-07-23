@@ -5,7 +5,7 @@ Deferred work, captured by /autoplan run 3 (2026-07-14). Items here are consciou
 ## Post-hackathon
 - [ ] `/api/events` pagination: `server.ts` caps `limit` at 1000 (~890 records by Demo Day — fine; silently truncating from late August). The verifier is deliberately independent of this route.
 - [ ] Verifier support for non-AgentMandate contracts (generalize the fetch layer once a second real implementer exists).
-- [ ] Real underwriter premium pricing (stub formula is disclosed by design for the hackathon).
+- [ ] Real underwriter premium pricing — the underwriter agent shipped as a Claude Managed Agent (`underwriter/`, 2026-07-22) with the disclosed `stub-v0` formula + daily certificate; **real actuarial pricing stays deferred** (stub is disclosed by design for the hackathon). On-chain parametric-cover escrow + Nanopayments/ERC-8183 premium settlement also still roadmap.
 
 ## Gated (opens with a specific decision)
 - [ ] Salted receipt commitments (`keccak(salt ‖ canonicalJson)`) + authenticated preimage access — REQUIRED before pilot mode (real Akoneo ledger) ever feeds the loop; spec already in the ERC draft's security-considerations section.

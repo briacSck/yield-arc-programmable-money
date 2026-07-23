@@ -1,0 +1,132 @@
+{
+  "certificate_id": "uw-2026-07-22-42569c04",
+  "issued_at": "2026-07-22T14:14:48Z",
+  "verification": {
+    "mode": "machine-verified",
+    "detail": "Machine verification via `npx -y @yield-cfo/mandate-verify --json` succeeded (SIMULATED for this proof). Its 5 invariant results are treated as authoritative; checks it covers are upgraded to PASS sourced from the verifier."
+  },
+  "subject": {
+    "wallet": "0x93d9c11c8e9e23e1e97e855668a27a14accaab7c",
+    "mandate_address": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
+    "chain_id": 5042002,
+    "agent_id": 850878,
+    "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+  },
+  "checks": [
+    {
+      "name": "chain_identity",
+      "status": "PASS",
+      "detail": "eth_chainId returned 5042002, matching the expected Arc testnet chain id."
+    },
+    {
+      "name": "mandate_floor_read",
+      "status": "PASS",
+      "detail": "floorUsdc() = 5000000 raw = 5.00 USDC (read directly on-chain via viem)."
+    },
+    {
+      "name": "mandate_max_ticket_read",
+      "status": "PASS",
+      "detail": "maxTicketUsdc() = 2000000 raw = 2.00 USDC."
+    },
+    {
+      "name": "mandate_daily_cap_read",
+      "status": "PASS",
+      "detail": "dailyCapUsdc() = 5000000 raw = 5.00 USDC (resolved on retry after transient RPC rate-limit)."
+    },
+    {
+      "name": "mandate_revocation_status",
+      "status": "PASS",
+      "detail": "revoked() = false \u2014 mandate is active/not revoked (resolved on retry)."
+    },
+    {
+      "name": "mandate_company_balance_read",
+      "status": "PASS",
+      "detail": "companyBalance() = 6000000 raw = 6.00 USDC (resolved on retry)."
+    },
+    {
+      "name": "mandate_deployed_balance_read",
+      "status": "PASS",
+      "detail": "deployedBalance() = 4000000 raw = 4.00 USDC."
+    },
+    {
+      "name": "mandate_window_read",
+      "status": "PASS",
+      "detail": "windowStart() = 1784017473 (2026-07-14T08:24:33Z); windowDeployed() = 4985900 raw = 4.9859 USDC (resolved on retry)."
+    },
+    {
+      "name": "floor_integrity",
+      "status": "PASS",
+      "detail": "companyBalance 6.00 USDC > floorUsdc 5.00 USDC (buffer 1.00 USDC); dashboard stats.floorBreaches = 0. No floor breach observed."
+    },
+    {
+      "name": "daily_cap_adherence",
+      "status": "PASS",
+      "detail": "windowDeployed 4.9859 USDC <= dailyCapUsdc 5.00 USDC; utilization 99.72% \u2014 within cap, no breach, but running near the limit."
+    },
+    {
+      "name": "per_move_ticket_adherence",
+      "status": "PASS",
+      "detail": "machine-verified (ticket_bound): every executed transfer <= maxTicketUsdc."
+    },
+    {
+      "name": "gas_health",
+      "status": "PASS",
+      "detail": "Agent wallet native balance = 6.972875 USDC-equivalent (eth_getBalance 6972875235313535495 wei, native token is 18-decimal). Disclosed healthy-gas threshold = 1.00 USDC (the stub-v0 surcharge floor); balance is well above it."
+    },
+    {
+      "name": "dashboard_reachable",
+      "status": "PASS",
+      "detail": "GET /api/events?limit=200 returned HTTP 200 (289 KB): stats (781 cycles, 1 on-chain move, 0 floor breaches, lastCycleAt 2026-07-22T14:05:21Z), 200 decision events, latest forecast, and identifiers matching the subject."
+    },
+    {
+      "name": "dashboard_mandate_snapshot_crosscheck",
+      "status": "UNVERIFIED",
+      "detail": "Dashboard `mandate` snapshot field is null \u2014 a data gap, not a violation. NON-CORE: every mandate parameter it would echo was independently confirmed by direct on-chain reads, so this does not trigger the UNVERIFIED surcharge."
+    },
+    {
+      "name": "dashboard_vs_chain_agreement",
+      "status": "PASS",
+      "detail": "Identifiers (wallet, mandate, registry, agentId 850878) match on-chain subject. Dashboard onChainMoves=1 is consistent with a single lifetime move; dashboard floorBreaches=0 agrees with on-chain revoked=false and companyBalance 6.00 > floor 5.00."
+    },
+    {
+      "name": "cfo_self_reported_cycle_health",
+      "status": "PASS",
+      "detail": "All 200 events in the window carry the CFO's own internal status:\"FAILED\" HOLD label, each reason 'cycle inputs failed (RPC request limit reached) \u2014 refusing to act on degraded input'. This is the CFO's own telemetry describing conservative HOLD behavior under RPC rate-limiting; it is not an underwriting failure and shows the bounded agent declining to trade on bad data."
+    },
+    {
+      "name": "erc8004_registry_identity",
+      "status": "PENDING",
+      "detail": "Identity agentId 850878 on registry 0x8004A818BFB912233c491871b3d84c89A494BD9e recorded from dashboard; a direct registry read was not required this run and was not performed \u2014 pending, not a failure."
+    }
+  ],
+  "risk_stats": {
+    "move_count": 1,
+    "closest_approach_to_floor_usdc": 1.0,
+    "daily_cap_utilization_pct": 99.72,
+    "floor_breaches": 0,
+    "revoked": false,
+    "gas_balance_usdc": 6.972875,
+    "dashboard_chain_agreement": "Agreement on all cross-checkable fields: identifiers match; onChainMoves=1; floorBreaches=0 consistent with on-chain revoked=false and companyBalance 6.00 USDC > floor 5.00 USDC. Only gap is the dashboard's null mandate snapshot, which was covered by direct on-chain reads."
+  },
+  "premium": {
+    "formula_version": "stub-v0",
+    "inputs": {
+      "max_loss_per_window_usdc": 1.0,
+      "hazard": 0.085076,
+      "surcharge": 1.0,
+      "compliant_days": 8
+    },
+    "premium_30d_usdc": 0.085076,
+    "disclosure": "premium_30d = max_loss_per_window (min(dailyCap 5.00, max(0, companyBalance 6.00 - floor 5.00)) = 1.00 USDC) x hazard (clamp(0.10 * 0.98^8, 0.02, 0.10) = 0.085076) x surcharge (1.0: no core check UNVERIFIED and gas 6.97 USDC >= 1) = 0.085076 USDC over 30 days."
+  },
+  "trend": {
+    "vs_prior": "Only prior entry is a seeded/synthetic baseline (uw-seed-0, premium ~$49.00, compliant_days=1, synthetic max_loss $500). This is the first real assessment: today's premium is $0.0851, far lower \u2014 driven mainly by the real (small) on-chain exposure (max_loss_per_window $1.00 vs the seed's synthetic $500) and secondarily by accrued compliant history lowering hazard from 0.098 to 0.0851 (compliant_days 1 -> 8). Not a like-for-like comparison because the baseline was synthetic.",
+    "prior_certificate_id": "uw-seed-0"
+  },
+  "disclaimers": [
+    "Machine-verified via @yield-cfo/mandate-verify (SIMULATED in this offline proof).",
+    "All figures derive from public read-only data fetched this run (Arc testnet RPC eth_call/eth_getBalance and the public dashboard). No transaction was signed or sent.",
+    "stub-v0 is a disclosed placeholder pricing formula, not an actuarially bound quote.",
+    "Some on-chain getters and the CFO's own cycles were affected by transient RPC 'request limit reached' rate-limiting; failed getters were resolved on retry. RPC/data-plumbing issues are data gaps, not mandate violations."
+  ]
+}
