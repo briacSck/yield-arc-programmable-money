@@ -205,8 +205,22 @@ test('replay throws on mis-sorted input (guards against a fetch-layer ordering b
   assert.throws(() => replay(ev), /must be sorted/);
 });
 
-test('empty history is vacuously compliant', () => {
+test('empty history is vacuously compliant but NOT mandate-seeded', () => {
   const v = replay([]);
   assert.equal(v.compliant, true);
   assert.equal(v.totalMoves, 0);
+  assert.equal(v.mandateSeeded, false); // the CLI turns this into exit 2 on a live scan
+});
+
+test('a history without MandateChanged is flagged unseeded (wrong address / deploy-block too late)', () => {
+  // Deposits reconstruct against a zero-mandate (floor/ticket/cap = 0) — the verdict is meaningless
+  // and mandateSeeded must be false so the CLI refuses to emit COMPLIANT.
+  const ev = [fund(100, 100, T0), move(KIND_DEPLOY, U(2), T0 + 10n)];
+  const v = replay(ev);
+  assert.equal(v.mandateSeeded, false);
+});
+
+test('a seeded history reports mandateSeeded true', () => {
+  const ev = [mandate(0, 5, 10, T0), fund(100, 100, T0), move(KIND_DEPLOY, U(2), T0 + 10n)];
+  assert.equal(replay(ev).mandateSeeded, true);
 });

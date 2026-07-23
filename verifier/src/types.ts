@@ -93,6 +93,14 @@ export interface Verdict {
   /** toBlock actually scanned (real run) or null (fixture run). */
   scannedThroughBlock: bigint | null;
   compliant: boolean;
+  /**
+   * Whether the constructor's `MandateChanged` was seen — i.e. the scan actually started at a real
+   * mandate. FALSE means a wrong `--address` or a `--deploy-block` set past the constructor: the
+   * history reconstructs against a zero-mandate and any verdict is meaningless. A verifier must
+   * never emit a wrong verdict, so the CLI treats `!mandateSeeded` on a live scan as OPERATIONAL
+   * (exit 2), never as COMPLIANT.
+   */
+  mandateSeeded: boolean;
   totalMoves: number;
   invariants: InvariantVerdict[];
   moves: MoveVerdict[];

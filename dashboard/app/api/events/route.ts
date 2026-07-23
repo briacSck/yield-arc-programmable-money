@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { AuditBlock } from '../../../src/api-contract';
+import type { AuditBlock, InvariantStatus } from '../../../src/api-contract';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,27 +29,55 @@ async function fetchAudit(): Promise<AuditBlock | null> {
     const v = (await res.json()) as Record<string, unknown>;
     if (!Array.isArray(v.invariants) || !Array.isArray(v.moves)) return null;
 
+    // Validate EVERY invariant element — a blind cast would (a) crash the page on a malformed
+    // element (`iv.status.toLowerCase()` on undefined) and (b) let a degenerate feed spoof a green
+    // "machine-verified" verdict. A feed with zero *valid* invariants is unusable → return null so
+    // the page falls back to its honest static hero, never a fabricated all-clear.
+    const STATUSES = new Set<InvariantStatus>(['PASS', 'VIOLATION', 'PENDING', 'UNVERIFIED']);
+    const KEYS = new Set(['floor', 'ticket', 'window', 'asymmetry', 'receipt']);
+    const invariants: AuditBlock['invariants'] = [];
+    for (const raw of v.invariants as Array<Record<string, unknown>>) {
+      if (!raw || typeof raw !== 'object') return null;
+      if (typeof raw.key !== 'string' || !KEYS.has(raw.key)) return null;
+      if (typeof raw.status !== 'string' || !STATUSES.has(raw.status as InvariantStatus)) return null;
+      invariants.push({
+        key: raw.key as AuditBlock['invariants'][number]['key'],
+        status: raw.status as InvariantStatus,
+        checks: typeof raw.checks === 'number' ? raw.checks : 0,
+        detail: typeof raw.detail === 'string' ? raw.detail : '',
+      });
+    }
+    if (invariants.length === 0) return null; // nothing actually verified → no audit block
+
     const verdictsByTxHash: AuditBlock['verdictsByTxHash'] = {};
     for (const m of v.moves as Array<Record<string, unknown>>) {
       const tx = typeof m.txHash === 'string' ? m.txHash.toLowerCase() : null;
       if (!tx) continue;
+      // Keep only real per-invariant statuses — an empty/garbage map must render UNVERIFIED,
+      // never a green PASS (page.tsx treats "no VIOLATION" as PASS otherwise).
+      const per: Record<string, InvariantStatus> = {};
+      if (m.perInvariant && typeof m.perInvariant === 'object') {
+        for (const [k, s] of Object.entries(m.perInvariant as Record<string, unknown>)) {
+          if (typeof s === 'string' && STATUSES.has(s as InvariantStatus)) per[k] = s as InvariantStatus;
+        }
+      }
       verdictsByTxHash[tx] = {
         txHash: tx,
         kind: m.kind === 'WITHDRAW' ? 'WITHDRAW' : 'DEPLOY',
-        floorHeadroomUsdc: (m.floorHeadroomUsdc as string | null) ?? null,
-        windowUtilization: (m.windowUtilization as number | null) ?? null,
+        floorHeadroomUsdc: typeof m.floorHeadroomUsdc === 'string' ? m.floorHeadroomUsdc : null,
+        windowUtilization: typeof m.windowUtilization === 'number' ? m.windowUtilization : null,
         receipt: m.receipt === 'mismatch' ? 'mismatch' : 'match',
-        perInvariant: (m.perInvariant as Record<string, AuditBlock['invariants'][number]['status']>) ?? {},
+        perInvariant: per,
       };
     }
 
     return {
       runAt: typeof v.runAt === 'string' ? v.runAt : new Date(0).toISOString(),
-      scannedThroughBlock: (v.scannedThroughBlock as string | null) ?? null,
+      scannedThroughBlock: typeof v.scannedThroughBlock === 'string' ? v.scannedThroughBlock : null,
       compliant: v.compliant === true,
       totalMoves: typeof v.totalMoves === 'number' ? v.totalMoves : 0,
-      invariants: v.invariants as AuditBlock['invariants'],
-      closestApproachToFloorUsdc: (v.closestApproachToFloorUsdc as string | null) ?? null,
+      invariants,
+      closestApproachToFloorUsdc: typeof v.closestApproachToFloorUsdc === 'string' ? v.closestApproachToFloorUsdc : null,
       verdictsByTxHash,
       version: typeof v.version === 'string' ? v.version : undefined,
     };

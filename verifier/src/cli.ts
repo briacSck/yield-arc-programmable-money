@@ -35,7 +35,11 @@ function parseArgs(argv: string[]): Args {
   const a: Args = { json: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i]!;
-    const val = () => argv[++i]!;
+    const val = () => {
+      const v = argv[++i];
+      if (v === undefined) fail2(`${t} requires a value.`);
+      return v;
+    };
     switch (t) {
       case '--rpc': a.rpc = val(); break;
       case '--address': a.address = requireHex(val(), '--address'); break;
@@ -152,6 +156,20 @@ async function main(): Promise<number> {
       scannedThroughBlock: fetched.scannedThroughBlock,
       source: 'chain',
     });
+
+    // A live scan that never saw the constructor's MandateChanged reconstructed against a
+    // zero-mandate — a wrong --address or a --deploy-block past the constructor. Any verdict here
+    // is meaningless, and a verifier must never emit a wrong verdict (same doctrine as the chainId
+    // preflight). Operational error, not COMPLIANT.
+    if (!verdict.mandateSeeded) {
+      process.stderr.write(
+        `\n  error: no MandateChanged event found from block ${deployBlock} — this is not a mandate's\n` +
+          `  constructor block, or ${address} is not an AgentMandate. Nothing was proven either way.\n` +
+          `  Fix: pass the mandate's real --deploy-block, or drop --address/--deploy-block for the\n` +
+          `  built-in YIELD defaults.\n\n`,
+      );
+      return 2;
+    }
   }
 
   if (args.json) {

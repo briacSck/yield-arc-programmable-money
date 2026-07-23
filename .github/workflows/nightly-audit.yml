@@ -53,19 +53,43 @@ jobs:
           node -e "const v=require('./verdicts.json'); console.log('compliant:', v.compliant, '| moves:', v.totalMoves, '| through:', v.scannedThroughBlock)"
 
       - name: Publish to the audit-log ref
-        if: steps.verify.outputs.exit_code != '2'
+        # success() ensures a FAILED verify step (e.g. malformed verdicts.json) never publishes;
+        # exit 2 (operational) also holds the last good verdict. Both gates required.
+        if: success() && steps.verify.outputs.exit_code != '2'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+
+          # Validate the file parses BEFORE touching git — never publish garbage. Build the commit
+          # message in its own step so a parse failure aborts here (command substitution under
+          # `set -e` does not abort the outer command, so do it explicitly).
+          msg="$(node -e "const v=require('./verdicts.json'); if(typeof v.compliant!=='boolean'||typeof v.totalMoves!=='number'){process.exit(1)} process.stdout.write('audit: '+(v.compliant?'COMPLIANT':'VIOLATION')+' — '+v.totalMoves+' moves @ '+(v.scannedThroughBlock||'?'))")"
+          [ -n "$msg" ] || { echo "::error::verdicts.json failed validation — not publishing"; exit 1; }
+
           git config user.name "yield-audit-bot"
           git config user.email "yield-audit-bot@users.noreply.github.com"
-          # Work in a throwaway dir so the main checkout is untouched.
+
+          # Append to the REAL audit-log history (the tamper-evident trail): fetch the existing ref
+          # into a throwaway checkout, commit the new verdict on top, and push WITHOUT force. A
+          # throwaway `git init` + `push -f` would obliterate the history every night.
+          new_verdict="$(pwd)/verdicts.json"
           tmp="$(mktemp -d)"
-          cp verdicts.json "$tmp/verdicts.json"
           cd "$tmp"
           git init -q
-          git checkout -q -b audit-log
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q "$remote" audit-log 2>/dev/null; then
+            git checkout -q -b audit-log FETCH_HEAD
+          else
+            echo "audit-log ref not found — creating it"
+            git checkout -q -b audit-log
+          fi
+          cp "$new_verdict" verdicts.json
           git add verdicts.json
-          git commit -q -m "audit: $(node -e "const v=require('./verdicts.json');process.stdout.write((v.compliant?'COMPLIANT':'VIOLATION')+' — '+v.totalMoves+' moves @ '+v.scannedThroughBlock)")"
-          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" audit-log:audit-log
+          # Skip an empty commit if the verdict is byte-identical to last night's.
+          if git diff --cached --quiet; then
+            echo "verdict unchanged since last run — nothing to publish"
+            exit 0
+          fi
+          git commit -q -m "$msg"
+          git push "$remote" audit-log:audit-log

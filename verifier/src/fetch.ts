@@ -22,6 +22,24 @@ import type { NormalizedEvent } from './types.js';
  *   - toBlock pinned once at scan start (latest − lag); report scannedThroughBlock in the verdict.
  */
 
+/** Max simultaneous RPC calls — bounds BOTH getLogs and getBlock (most public Arc endpoints
+ *  rate-limit ~1 req/s; dRPC, the pool's first entry, serves concurrency). */
+const CONCURRENCY = 10;
+
+/** Run `fn` over `items` with at most `concurrency` in flight. Rejects if any task rejects. */
+async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
+  const queue = [...items];
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+      for (;;) {
+        const item = queue.shift();
+        if (item === undefined) return;
+        await fn(item);
+      }
+    }),
+  );
+}
+
 export const MANDATE_EVENT_ABI = parseAbi([
   'event DecisionExecuted(bytes32 indexed decisionId, uint8 kind, uint256 amount, bytes32 forecastHash)',
   'event MandateChanged(uint256 floor, uint256 maxTicket, uint256 dailyCap)',
@@ -95,19 +113,11 @@ export async function fetchHistory(
   const total = ranges.length;
   let done = 0;
   const raw: Log[] = [];
-  const queue = [...ranges];
-  const CONCURRENCY = 10;
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
-      for (;;) {
-        const r = queue.shift();
-        if (!r) return;
-        const logs = await client.getLogs({ address: mandateAddress, fromBlock: r[0], toBlock: r[1] });
-        raw.push(...logs);
-        opts.onProgress?.(++done, total);
-      }
-    }),
-  );
+  await runPool(ranges, CONCURRENCY, async (r) => {
+    const logs = await client.getLogs({ address: mandateAddress, fromBlock: r[0], toBlock: r[1] });
+    raw.push(...logs);
+    opts.onProgress?.(++done, total);
+  });
 
   // Order by (blockNumber, logIndex) BEFORE decoding — the sole ordering key.
   raw.sort((a, b) => {
@@ -119,10 +129,14 @@ export async function fetchHistory(
   const unknownLogCount = raw.length - decoded.length;
 
   // Timestamps for every block that carries a decoded event (window math needs deposit ts).
+  // Bounded concurrency — same cap as getLogs. An UNBOUNDED Promise.all here would burst hundreds
+  // of simultaneous getBlock calls at endpoints that rate-limit ~1 req/s, failing the whole scan.
   const blockNumbers = [...new Set(decoded.map((d) => d.blockNumber))];
-  const blocks = await Promise.all(blockNumbers.map((bn) => client.getBlock({ blockNumber: bn })));
   const tsByBlock = new Map<bigint, bigint>();
-  blockNumbers.forEach((bn, i) => tsByBlock.set(bn, blocks[i]!.timestamp));
+  await runPool(blockNumbers, CONCURRENCY, async (bn) => {
+    const block = await client.getBlock({ blockNumber: bn });
+    tsByBlock.set(bn, block.timestamp);
+  });
 
   const events: NormalizedEvent[] = decoded.map((d) => normalize(d, tsByBlock.get(d.blockNumber)!));
 

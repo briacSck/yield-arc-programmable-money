@@ -151,8 +151,12 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
 
         // ── Invariant 5: receipt (both kinds carry a forecastHash) ──────────────
         const expId = expectedDecisionId(forecastHash, kind);
-        const receiptOk = expId !== null && expId.toLowerCase() === decisionId.toLowerCase();
-        if (!receiptOk) {
+        const keccakOk = expId !== null && expId.toLowerCase() === decisionId.toLowerCase();
+        const isDuplicate = seenDecisionIds.has(decisionId.toLowerCase());
+        // The per-move `receipt` field reflects BOTH failure modes (a duplicate is a receipt
+        // violation too), so `moves[].receipt` and `receiptCleanMoves` never disagree with vio[].
+        const receiptOk = keccakOk && !isDuplicate;
+        if (!keccakOk) {
           per.receipt = 'VIOLATION';
           vio.receipt.push({
             invariant: 'receipt',
@@ -167,7 +171,7 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
         }
         // Replay-guard cross-check: the contract rejects a reused decisionId, so a duplicate in
         // history would itself be a contract-level impossibility worth surfacing.
-        if (seenDecisionIds.has(decisionId.toLowerCase())) {
+        if (isDuplicate) {
           per.receipt = 'VIOLATION';
           vio.receipt.push({
             invariant: 'receipt',
@@ -317,6 +321,7 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
     deployBlock: opts.deployBlock ?? (events[0]?.blockNumber ?? 0n),
     scannedThroughBlock: opts.scannedThroughBlock ?? null,
     compliant,
+    mandateSeeded: st.seededMandate,
     totalMoves: deposits + withdrawals,
     invariants,
     moves,

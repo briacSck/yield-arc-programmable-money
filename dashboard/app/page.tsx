@@ -253,7 +253,6 @@ const INVARIANT_LABEL: Record<string, string> = {
 
 function Scoreboard({ audit }: { audit: AuditBlock }) {
   const violations = audit.invariants.reduce((n, iv) => n + (iv.status === 'VIOLATION' ? 1 : 0), 0);
-  const totalChecks = audit.invariants.reduce((n, iv) => Math.max(n, iv.checks), 0);
   const stale = Date.now() - Date.parse(audit.runAt) > 36 * 3_600_000;
 
   return (
@@ -364,6 +363,15 @@ function LogRow({
 function MoveVerdict({ verdict }: { verdict: MoveVerdictDto }) {
   const statuses = Object.values(verdict.perInvariant);
   const anyViolation = statuses.includes('VIOLATION');
+  // An empty verdict map means the move carried no per-invariant data — render UNVERIFIED, never a
+  // green PASS (a PASS chip with nothing behind it is exactly the "checked nothing" spoof).
+  if (statuses.length === 0) {
+    return (
+      <span className="verdict verdict--pending" title="move present but no per-invariant verdict data">
+        UNVERIFIED
+      </span>
+    );
+  }
   const title =
     verdict.kind === 'DEPLOY'
       ? `floor headroom ${verdict.floorHeadroomUsdc ? usdc(verdict.floorHeadroomUsdc) : '—'}` +
