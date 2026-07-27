@@ -19,7 +19,8 @@
     "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts",
-    "verify": "tsx src/cli.ts"
+    "verify": "tsx src/cli.ts",
+    "snapshot": "tsx scripts/snapshot.ts"
   },
   "publishConfig": {
     "access": "public"

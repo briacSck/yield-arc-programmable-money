@@ -34,10 +34,15 @@ pragma solidity ^0.8.24;
 /// `safe_floor` (§16.3) must sit at or above it by configuration. `FLOOR_RAISE` decisions are
 /// advisory/off-chain only — the agent cannot change its own mandate (`setMandate` is onlyOwner).
 ///
-/// Decision receipts: each money move carries `decisionId` (idempotency key, derived off-chain as
-/// keccak(inputsHash ‖ kind ‖ asOf) — wall-clock-independent so retries collide here) and
-/// `forecastHash` (the snapshot the agent acted on), emitted in {DecisionExecuted}. A reused
-/// `decisionId` REVERTS.
+/// Decision receipts: each money move carries `decisionId` (idempotency key) and `forecastHash`
+/// (the snapshot the agent acted on), emitted in {DecisionExecuted}. A reused `decisionId` REVERTS.
+///
+/// `decisionId` is derived off-chain as keccak256(utf8("<inputsHash>|<kind>")) with kind ∈
+/// {DEPLOY, WITHDRAW} — wall-clock-independent, so retries of the same decision collide here.
+/// The `forecastHash` argument IS that same `inputsHash`, which is what makes receipt integrity
+/// verifiable purely from chain state (no preimage service required).
+/// ERRATA (2026-07-27): this comment previously read keccak(inputsHash ‖ kind ‖ asOf), which never
+/// matched the executor. The contract is frozen and was always correct; only the prose was wrong.
 contract AgentMandate {
     // ─── Units ───────────────────────────────────────────────────────────────
     /// @notice native (18-dec) wei per 6-dec USDC base unit.

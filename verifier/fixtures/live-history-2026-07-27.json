@@ -1,0 +1,144 @@
+{
+  "_name": "live-snapshot",
+  "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
+  "chainId": 5042002,
+  "deployBlock": "51743317",
+  "toBlock": "53950410",
+  "capturedAt": "2026-07-27",
+  "events": [
+    {
+      "blockNumber": "51743317",
+      "logIndex": 8,
+      "timestamp": "1784017303",
+      "txHash": "0xed853d8c60d01c868ee4e797b1012968a9cb618020ca489d1b93b454f6a592e4",
+      "name": "MandateChanged",
+      "args": {
+        "floor": "5000000",
+        "maxTicket": "2000000",
+        "dailyCap": "5000000"
+      }
+    },
+    {
+      "blockNumber": "51743323",
+      "logIndex": 5,
+      "timestamp": "1784017306",
+      "txHash": "0x869fede95a07f63e17fec2087f5c09f8331a1681f66f1b05f6c72e0964e19ca7",
+      "name": "CompanyFunded",
+      "args": {
+        "amount": "10000000",
+        "newCompanyBalance": "10000000"
+      }
+    },
+    {
+      "blockNumber": "51743644",
+      "logIndex": 0,
+      "timestamp": "1784017473",
+      "txHash": "0x918b867b77c8a9ffbefc5bdbe45d7d43cceac6fa16ee7d8677a292f5dfa760a5",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x05ac3b1f67d0a211baca42e1c0eeef8e26eb51f58fc7e8b6daa7a973c3b8d441",
+        "kind": 0,
+        "amount": "985900",
+        "forecastHash": "0x5e2dc1b920817cde2cf815cac6b6719e041afe8464abd30defbac320b74a59ee"
+      }
+    },
+    {
+      "blockNumber": "51743649",
+      "logIndex": 0,
+      "timestamp": "1784017476",
+      "txHash": "0x49d0a4dcbf862e562d7aef15483cd315a5e043e58de5256e3932999b5762c756",
+      "name": "Revoked",
+      "args": {
+        "by": "0x4704fB05a6e87C482090cF5534E86c9ab44bBFda"
+      }
+    },
+    {
+      "blockNumber": "51743657",
+      "logIndex": 0,
+      "timestamp": "1784017481",
+      "txHash": "0xc9e7fcb08d14f7c47970a99c0c4a324b9c78ae74f7e4c2773cb78e70966bfda3",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x7abc71cdb833a41a2602f4a9a5634b147824a7976432d978cc49a1f46322fa66",
+        "kind": 1,
+        "amount": "985900",
+        "forecastHash": "0x1e3287a15e59e5bb09cb14525a809e1b8977ba256fdea43856ce076a43671dcd"
+      }
+    },
+    {
+      "blockNumber": "51743662",
+      "logIndex": 0,
+      "timestamp": "1784017483",
+      "txHash": "0x6f23550c691fe21a7d10ec7d9bdf1553a5d104b04bda8acd140a4bfa8b6ac60d",
+      "name": "Reinstated",
+      "args": {
+        "by": "0x4704fB05a6e87C482090cF5534E86c9ab44bBFda"
+      }
+    },
+    {
+      "blockNumber": "51754385",
+      "logIndex": 4,
+      "timestamp": "1784023113",
+      "txHash": "0x9b9d5ee2d99d95bef932cf2cc36491a716b19a32516eec41217b73a9514ffde7",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x54882bd4e7006fe0a3c9a8a9f421c1cb4c3a1b576ecdc2697c395a53445cdd31",
+        "kind": 0,
+        "amount": "2000000",
+        "forecastHash": "0xa20ac36d72c02c56f8f950c2303f05eb281f3313d9b0377d9eefa254443926db"
+      }
+    },
+    {
+      "blockNumber": "51763620",
+      "logIndex": 8,
+      "timestamp": "1784027907",
+      "txHash": "0xf0b60bc1ff1929725485d1f5cb6743ee9efe28f3805264060f4a6d916624dc44",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x2c440e724926d8cdcf32ef8c34546b38cb553d6fdf3829b0305a756c98dda988",
+        "kind": 0,
+        "amount": "2000000",
+        "forecastHash": "0x326673e38b5734aa2d77740281d20c7f8ee1206729de6ac04430c9b48e6400c4"
+      }
+    },
+    {
+      "blockNumber": "53293702",
+      "logIndex": 5,
+      "timestamp": "1784831046",
+      "txHash": "0x4a27bb51a79ec00f8ab01388774d41486c9c123e17538605f14bfa9259416146",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x6397ba63654b8e1f6d64af98360fa2fb08a035463c1928894f0d169684404f8d",
+        "kind": 1,
+        "amount": "1859676",
+        "forecastHash": "0x3905b0914332ac909286b4867cc28b965f290e051696ca773edba3fa70761a60"
+      }
+    },
+    {
+      "blockNumber": "53335892",
+      "logIndex": 0,
+      "timestamp": "1784852646",
+      "txHash": "0xc41a68a2bc3237c5d590a56afc6ea4ebd561f73393b0463a90094ad36fa7178c",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x061ccc494acaba66624f7c18e6654522ca49c5bcdcae79f77564d51ac634dc07",
+        "kind": 1,
+        "amount": "1847366",
+        "forecastHash": "0xc90725c7a65325341ea5c95f830ebd5df4b0aeaeb3a178d5172cacaa14570748"
+      }
+    },
+    {
+      "blockNumber": "53376897",
+      "logIndex": 4,
+      "timestamp": "1784874246",
+      "txHash": "0xf65adfc0733b384ee3b11eedcdeebcf49f9d6f194aeb5006e49137483c858292",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0xbe93d0b4bd50d7e975f3e3f0795214569f2e06d4be808c247b87bf8bd1101934",
+        "kind": 1,
+        "amount": "292958",
+        "forecastHash": "0xe3a14cad84395254bcf9edbab5d183e2c4d3abad2f70aa29a32ab4adcfc52cf5"
+      }
+    }
+  ]
+}
