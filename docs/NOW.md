@@ -4,7 +4,31 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-23 EOD (worker revived + dashboard v2 audit live + verifier hardened & publish-ready + USYC round-trip proven + heartbeat alert VERIFIED + ERC draft written)_
+_Last updated: 2026-07-27 (W3 day 1 — branches merged to `main`, errata fixed, golden snapshot refreshed 4→7 moves)_
+
+## W3 kickoff 2026-07-27 — merge + housekeeping
+
+**All open work is on `main`.** PR #2 (`feat/verifier` — verifier + RPC-pool/heartbeat fix, CI green)
+merged; `feat/underwriter-cma`'s trailing `HANDOFF.md` commit merged. `audit-log` is the nightly-CI
+data ref and is deliberately never merged. No open PRs remain.
+
+**Loop is alive and compliant.** Live cycle at 16:24 UTC (1271 cycles, 0 floor breaches); the
+verifier reads **COMPLIANT — 7 moves × 5 invariants, 0 violations** against the live chain, closest
+approach $1.00 above floor. Last on-chain move 2026-07-24 06:24 UTC (quiet since — the forecast has
+not called for a move, not a fault).
+
+**Closed two TODOS items:**
+- **`decisionId` errata fixed** — `AgentMandate.sol` NatSpec + PLAN §17.2 now state the executor's
+  actual `keccak256(utf8("<inputsHash>|<kind>"))`, each with a dated ERRATA line preserving what they
+  used to claim. Comment-only; deployed bytecode untouched.
+- **Golden snapshot refreshed 4 → 7 moves** + made repeatable via `npm run snapshot -w verifier`.
+  The offline judge path (`--fixture live-snapshot`) no longer under-reports vs the dashboard.
+  Verifier 19/19 green, typecheck clean.
+
+**⚠️ CP2 deadline (Mon Jul 27 13:59 Paris) has passed** — needs Briac to confirm it was submitted.
+
+_Previous entry: 2026-07-23 EOD (worker revived + dashboard v2 audit live + verifier hardened &
+publish-ready + USYC round-trip proven + heartbeat alert VERIFIED + ERC draft written)_
 
 ## Session wrap 2026-07-23 — where the next session picks up
 

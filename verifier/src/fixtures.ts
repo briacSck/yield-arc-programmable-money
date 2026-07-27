@@ -14,7 +14,7 @@ export type FixtureName = (typeof FIXTURE_NAMES)[number];
 
 const FIXTURE_FILE: Record<FixtureName, string> = {
   'naive-agent': 'naive-agent.json',
-  'live-snapshot': 'live-history-2026-07-23.json',
+  'live-snapshot': 'live-history-2026-07-27.json',
 };
 
 export interface LoadedFixture {
@@ -68,6 +68,6 @@ export function loadFixture(name: FixtureName): LoadedFixture {
     provenance:
       name === 'naive-agent'
         ? 'SYNTHETIC FIXTURE — a naive unbounded agent, for contrast. NOT YIELD\'s history.'
-        : 'OFFLINE SNAPSHOT of YIELD\'s live on-chain history at block ' + (raw.toBlock ?? '?') + ' (2026-07-23). Re-run without --fixture to verify live.',
+        : 'OFFLINE SNAPSHOT of YIELD\'s live on-chain history at block ' + (raw.toBlock ?? '?') + ' (' + (raw.capturedAt ?? 'undated') + '). Re-run without --fixture to verify live.',
   };
 }
