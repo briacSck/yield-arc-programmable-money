@@ -9,9 +9,12 @@
   },
   "scripts": {
     "start": "tsx src/run.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@yield/agent": "*",
+    "@yield/forecast": "*",
     "@yield/shared": "*"
   },
   "devDependencies": {
