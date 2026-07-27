@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createPublicClient, parseAbi, type PublicClient } from 'viem';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
 import { arcTransport, defineArcChain } from './chain/arc-chain.js';
@@ -209,7 +210,12 @@ export function makeMandateReader(env: NodeJS.ProcessEnv = process.env) {
 }
 
 // Entrypoint: `npm start --workspace agent` (Railway worker service).
-if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) {
+//
+// The check compares FULL resolved URLs, not basenames. A basename match ("does my module URL end
+// with `run.ts`?") is true for ANY entry script called run.ts — so merely importing this module
+// from, say, `scenario/src/run.ts` started a real scheduler as a side effect of the import.
+const invokedAs = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (invokedAs && import.meta.url === invokedAs) {
   // Local runs load the repo-root .env; Railway injects vars directly (no file — both fine).
   for (const candidate of ['.env', '../.env']) {
     try {

@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@yield-cfo/mandate-verify",
   "version": "0.1.0",
   "description": "Judge-runnable invariant verifier for the YIELD AgentMandate: replays an autonomous treasury agent's FULL on-chain history and machine-checks every move against the mandate's five invariants (floor / ticket / 24h budget window / post-revocation asymmetry / decision receipts). One command, zero config.",
