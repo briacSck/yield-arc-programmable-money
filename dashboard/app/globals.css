@@ -326,6 +326,113 @@ button:focus-visible {
   color: var(--mute);
 }
 
+/* ── Machine-audit scoreboard (§18.2) ───────────────────────────────────── */
+.eyebrow--warn {
+  color: var(--warn);
+}
+.stat__link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent);
+}
+.stat__link:hover {
+  color: var(--accent);
+}
+
+.scoreboard {
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  border-radius: 10px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.scoreboard__num {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+.scoreboard__sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.scoreboard__sub strong {
+  font-weight: 600;
+  color: var(--accent);
+}
+.scoreboard__verify {
+  margin-top: 8px;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--mute);
+}
+.scoreboard__verify code {
+  background: var(--paper);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--ink-2);
+}
+
+.scoreboard__chips {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.inv {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--paper);
+  border: 1px solid transparent;
+}
+.inv__key {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+}
+.inv__status {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 15px;
+  font-weight: 600;
+}
+.inv__checks {
+  font-size: 10px;
+  color: var(--mute-2);
+}
+.inv--pass .inv__status { color: var(--accent); }
+.inv--pass { border-color: var(--accent); }
+.inv--violation .inv__status { color: var(--neg); }
+.inv--violation { border-color: var(--neg); background: var(--neg-bg); }
+.inv--pending .inv__status,
+.inv--unverified .inv__status { color: var(--mute-2); }
+
+/* Per-row verdict chips — supersede the client receipt badge past the coverage boundary. */
+.verdict {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.verdict--pass { color: var(--accent); background: var(--accent-bg); }
+.verdict--violation { color: var(--neg); background: var(--neg-bg); }
+.verdict--pending { color: var(--mute-2); }
+.badge-provisional { color: var(--mute-2); font-size: 11px; }
+
+@media (max-width: 620px) {
+  .scoreboard__chips { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;

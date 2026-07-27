@@ -1,8 +1,10 @@
 # AGENTS.md — yield-agentic-cfo (Arc hackathon)
 
 > Committed on purpose: every clone (and every teammate's Claude Code session) bootstraps from the
-> same rules and state. The strategy doc (`docs/PLAN.md`) stays gitignored/local — ask Briac for
-> the share copy. This repo is PUBLIC: build state belongs here, strategy never does.
+> same rules and state. The strategy doc (`docs/PLAN.md`) and the ERC draft (`docs/ERC-DRAFT.md`)
+> stay gitignored/local — ask Briac for the share copies (the ERC draft is private until Demo Day,
+> §18.3). The sanitized `docs/PLAN.public.md` IS committed for collaborators. This repo is PUBLIC:
+> build state belongs here, strategy never does.
 
 ## Project
 
@@ -35,7 +37,7 @@ forecast hash each decision acted on, committed on-chain).
 | `forecast` | `baselineForecast()` (§16.4): deterministic, rational-k bands, canonical `inputsHash`. The t0 model service swaps in later behind `modelId` |
 | `scenario` | Seeded "Boulangerie Chartier" ledger + simulated clock (demo driver) |
 | `dashboard` | Next.js; reads ONE API route backed by the event log, nothing else |
-| `verifier` *(W2, in progress)* | Judge-runnable CLI (`npx -y @yield-cfo/mandate-verify`): two-layer — fetch (chain → NormalizedEvent[]) + PURE replay core that machine-checks the 5 mandate invariants over full history. Fixtures (JSON event streams) test BOTH directions: violating histories the verifier must catch AND compliant-adversarial histories it must NOT flag (false VIOLATIONs are the dominant failure mode — invariant 3 is an EXACT replay of the contract's lazy tumbling window, never a naive rolling 24h sum). Verdicts publish via nightly CI → `audit-log` git ref → dashboard proxy splice. Zero coupling to the worker except one additive read-only route |
+| `verifier` *(W2, **core shipped** 2026-07-23)* | Judge-runnable CLI (`npx -y @yield-cfo/mandate-verify`): two-layer — fetch (chain → NormalizedEvent[]) + PURE replay core (`src/core/replay.ts`, zero I/O) that machine-checks the 5 mandate invariants over full history. **Runs live 5/5 COMPLIANT in ~6 s.** 17 tests test BOTH directions: violating histories it must catch (the negative demo) AND compliant-adversarial histories it must NOT flag (false VIOLATIONs are the dominant failure mode — invariant 3 is an EXACT replay of the contract's lazy tumbling window, never a naive rolling 24h sum) + a live-history golden test. Receipt check is PURE-CHAIN (`decisionId = keccak(forecastHash\|kind)`, no preimage API). Remaining: npm publish, nightly CI → `audit-log` ref → dashboard `audit` block, `GET /forecasts` preimage route, ERC draft |
 | `underwriter` *(W3, §18 beat)* | Claude Managed Agent (hosted, scheduled, Outcome-graded) that prices insurance for the CFO from public read-only data: fetches `/events`, cross-checks the `AgentMandate` getters on-chain via viem, computes risk stats, prices a disclosed `stub-v0` premium, and issues a certificate + memo daily. A SEPARATE agent from the CFO (arm's-length); strictly read-only (HTTP GET + `eth_call`, no keys, no tx) — consumes existing surfaces, touches none of the untouchable path. Build kit + first real certificate under `underwriter/`; when `@yield-cfo/mandate-verify` ships it flips to machine-verified with no code change |
 
 ## Live state
@@ -50,6 +52,14 @@ executor path — do not modify money-moving code without Briac's explicit go. T
 surface (`agent/src/server.ts`) MAY gain additive read-only routes (that's the sanctioned seam);
 any worker redeploy restarts the loop (it's restart-safe by design, but coordinate).
 
+**Railway deploys are MANUAL, not auto-from-`main`** (gotcha proven 2026-07-23 — a fix on `main` sat
+undeployed while the worker ran 8-day-old code). Deploy with `railway up --service worker` or
+`railway up --service dashboard` (uploads the current working dir; Railpack build via the root
+`scripts/railway-*.mjs` dispatchers). A failed build keeps the old deployment running. **RPC
+liveness is a pool, not a host** — the worker reads through a viem `fallback` across Arc endpoints
+(`agent/src/chain/arc-chain.ts`); only `rpc.drpc.testnet.arc.io` serves concurrent `eth_getLogs`,
+the rest rate-limit ~1 req/s. Never wire a single `ARC_RPC_URL` as the sole endpoint again.
+
 ## Commands
 
 ```bash
@@ -57,7 +67,8 @@ npm install                          # workspace install
 npm run typecheck --workspaces       # all workspaces
 npm test --workspaces --if-present   # shared + agent + forecast (contracts run in CI)
 npm start --workspace agent          # the Tier-1 loop (SCHEDULER_MODE=observe by default)
-npx tsx agent/scripts/<script>.ts    # ops scripts: circle-setup, deploy-mandate, register-identity, e2e-first-decision
+npx tsx agent/scripts/<script>.ts    # ops scripts: circle-setup, deploy-mandate, register-identity, e2e-first-decision, usyc-mint-test
+npx tsx verifier/src/cli.ts          # @yield-cfo/mandate-verify — live 5/5 in ~6s (--fixture naive-agent for the negative demo)
 ```
 
 ## Environment (names only — see .env.example; secrets live in each runner's local .env)

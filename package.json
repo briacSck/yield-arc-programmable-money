@@ -12,7 +12,8 @@
     "agent",
     "forecast",
     "scenario",
-    "dashboard"
+    "dashboard",
+    "verifier"
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",

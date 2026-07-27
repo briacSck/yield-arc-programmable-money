@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { EventLogRecord } from '@yield/shared';
+import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
 import type { EventsResponse } from '../src/api-contract';
 import { ForecastCone } from '../components/ForecastCone';
 import { ARCSCAN, daysSince, shortHash, usdc, when } from '../lib/format';
@@ -56,10 +57,11 @@ export default function Page() {
     );
   }
 
-  const { stats, mandate, events } = data;
+  const { stats, mandate, events, audit } = data;
   const moves = events.filter((e) => e.status === 'CONFIRMED');
   const running = daysSince(stats.firstOnChainMoveAt);
   const gasLow = mandate ? BigInt(mandate.agentGasWei) < 5n * 10n ** 16n : false;
+  const auditViolations = audit ? audit.invariants.reduce((n, iv) => n + (iv.status === 'VIOLATION' ? 1 : 0), 0) : null;
 
   return (
     <main className="wrap">
@@ -89,8 +91,23 @@ export default function Page() {
             <div className="stat__label">forecast cycles</div>
           </div>
           <div className="stat">
-            <div className="stat__num">0</div>
-            <div className="stat__label">floor breaches (enforced on-chain)</div>
+            {/* Hero wiring (§18.2): the page's first number is machine-attested when the nightly
+                audit is reachable, and falls back to the honest static claim when it isn't. */}
+            {audit ? (
+              <>
+                <div className="stat__num">
+                  <a href="#audit" className="stat__link">{auditViolations}</a>
+                </div>
+                <div className="stat__label">
+                  {auditViolations === 0 ? 'violations — machine-verified' : 'violations found'}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="stat__num">0</div>
+                <div className="stat__label">floor breaches (enforced on-chain)</div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -109,6 +126,10 @@ export default function Page() {
         />
       </section>
 
+      {/* Machine-audit scoreboard (§18.2) — the 10-second camera surface. Renders only when the
+          nightly verifier feed is reachable; its absence is silent, never red. */}
+      {audit && <Scoreboard audit={audit} />}
+
       {/* Decision log */}
       <section className="section">
         <div className="section__head">
@@ -121,7 +142,14 @@ export default function Page() {
             useful move. Discipline, not inactivity.
           </div>
         ) : (
-          [...events].reverse().slice(0, 60).map((e) => <LogRow key={e.seq} record={e} />)
+          [...events].reverse().slice(0, 60).map((e) => (
+            <LogRow
+              key={e.seq}
+              record={e}
+              verdict={e.execution ? audit?.verdictsByTxHash[e.execution.txHash.toLowerCase()] ?? null : null}
+              auditThroughBlock={audit?.scannedThroughBlock ?? null}
+            />
+          ))
         )}
       </section>
 
@@ -209,7 +237,73 @@ function Header({ revoked, agentId, mode }: { revoked: boolean; agentId: string;
   );
 }
 
-function LogRow({ record }: { record: EventLogRecord }) {
+/**
+ * The audit scoreboard band (§18.2) — five HISTORY-level invariants (not row properties): the 24h
+ * window is rolling; asymmetry is a property of the whole revocation history. Magnitude, not grade.
+ * Vocabulary is PASS/VIOLATION/PENDING/UNVERIFIED — never "FAIL(ED)" (the log uses FAILED for tx
+ * failures). No data-plumbing failure reaches here: this renders only when a real verdict exists.
+ */
+const INVARIANT_LABEL: Record<string, string> = {
+  floor: 'floor',
+  ticket: 'ticket',
+  window: 'window',
+  asymmetry: 'asymmetry',
+  receipt: 'receipts',
+};
+
+function Scoreboard({ audit }: { audit: AuditBlock }) {
+  const violations = audit.invariants.reduce((n, iv) => n + (iv.status === 'VIOLATION' ? 1 : 0), 0);
+  const stale = Date.now() - Date.parse(audit.runAt) > 36 * 3_600_000;
+
+  return (
+    <section className="section" id="audit">
+      <div className="section__head">
+        <h2>Machine-checked — every move, against five invariants</h2>
+        <span className={`eyebrow${stale ? ' eyebrow--warn' : ''}`}>
+          {stale ? 'audit stale · ' : ''}last audit {when(audit.runAt)}
+          {audit.version ? ` · ${audit.version}` : ''}
+        </span>
+      </div>
+
+      <div className="scoreboard">
+        <div className="scoreboard__headline">
+          <div className="scoreboard__num">
+            {audit.totalMoves} × 5
+          </div>
+          <div className="scoreboard__sub">
+            {audit.totalMoves} moves × 5 invariants — <strong>{violations === 0 ? '0 violations' : `${violations} violation${violations > 1 ? 's' : ''}`}</strong>
+            {audit.closestApproachToFloorUsdc && violations === 0 && (
+              <> · closest approach <strong>{usdc(audit.closestApproachToFloorUsdc)}</strong> above floor</>
+            )}
+          </div>
+          <div className="scoreboard__verify">
+            verify it yourself: <code>npx -y @yield-cfo/mandate-verify</code>
+          </div>
+        </div>
+
+        <div className="scoreboard__chips">
+          {audit.invariants.map((iv) => (
+            <div key={iv.key} className={`inv inv--${iv.status.toLowerCase()}`} title={iv.detail}>
+              <span className="inv__key">{INVARIANT_LABEL[iv.key] ?? iv.key}</span>
+              <span className="inv__status">{iv.status}</span>
+              <span className="inv__checks">{iv.checks} checked</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LogRow({
+  record,
+  verdict,
+  auditThroughBlock,
+}: {
+  record: EventLogRecord;
+  verdict?: MoveVerdictDto | null;
+  auditThroughBlock?: string | null;
+}) {
   const { decision, status, execution } = record;
   const isMove = status === 'CONFIRMED';
   const isFailed = status === 'FAILED';
@@ -219,7 +313,11 @@ function LogRow({ record }: { record: EventLogRecord }) {
     : decision.kind === 'WITHDRAW' ? 'kind--withdraw'
     : decision.kind === 'FLOOR_RAISE' ? 'kind--floor'
     : 'kind--hold';
+  // The verifier verdict SUPERSEDES the client-side receipt badge (two sources of truth must never
+  // disagree on screen). The client check renders only past the coverage boundary, styled provisional.
   const receiptOk = execution ? execution.receiptHash === decision.forecastInputsHash : null;
+  const pastCoverage =
+    isMove && auditThroughBlock && !verdict; // a confirmed move newer than the last audit = PENDING
 
   return (
     <div className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}`}>
@@ -240,13 +338,50 @@ function LogRow({ record }: { record: EventLogRecord }) {
             <a href={execution.explorerUrl} target="_blank" rel="noreferrer">
               tx {shortHash(execution.txHash)}
             </a>
-            <span className={receiptOk ? 'badge-ok' : 'badge-bad'} title="forecast hash committed on-chain matches this decision's inputs hash">
-              {receiptOk ? '✓ receipt on-chain' : '✗ receipt mismatch'}
-            </span>
+            {verdict ? (
+              <MoveVerdict verdict={verdict} />
+            ) : pastCoverage ? (
+              <span className="verdict verdict--pending" title="confirmed on-chain; awaiting the next nightly audit">
+                PENDING
+              </span>
+            ) : (
+              <span
+                className={`badge-provisional`}
+                title="client-side receipt check (provisional until the nightly audit covers this move)"
+              >
+                {receiptOk ? '✓ receipt' : '✗ receipt'}
+              </span>
+            )}
           </>
         )}
       </span>
     </div>
+  );
+}
+
+/** Per-move verdict chip — machine-attested. Green = every applicable invariant PASSed at this move. */
+function MoveVerdict({ verdict }: { verdict: MoveVerdictDto }) {
+  const statuses = Object.values(verdict.perInvariant);
+  const anyViolation = statuses.includes('VIOLATION');
+  // An empty verdict map means the move carried no per-invariant data — render UNVERIFIED, never a
+  // green PASS (a PASS chip with nothing behind it is exactly the "checked nothing" spoof).
+  if (statuses.length === 0) {
+    return (
+      <span className="verdict verdict--pending" title="move present but no per-invariant verdict data">
+        UNVERIFIED
+      </span>
+    );
+  }
+  const title =
+    verdict.kind === 'DEPLOY'
+      ? `floor headroom ${verdict.floorHeadroomUsdc ? usdc(verdict.floorHeadroomUsdc) : '—'}` +
+        (verdict.windowUtilization != null ? ` · window ${Math.round(verdict.windowUtilization * 100)}%` : '') +
+        ` · receipt ${verdict.receipt}`
+      : `withdraw (ungated by design) · receipt ${verdict.receipt}`;
+  return (
+    <span className={`verdict ${anyViolation ? 'verdict--violation' : 'verdict--pass'}`} title={title}>
+      {anyViolation ? 'VIOLATION' : 'PASS'}
+    </span>
   );
 }
 

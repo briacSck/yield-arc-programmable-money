@@ -1,0 +1,38 @@
+name: release-verifier
+
+# Publishes @yield-cfo/mandate-verify to npm WITH provenance (a signed, verifiable link from the
+# package back to this exact commit + workflow) — on-message for an audit tool: the tarball's
+# origin is itself machine-verifiable. Triggers on a `verifier-v*` tag, or manually.
+#
+# One-time setup: add an npm automation token as the `NPM_TOKEN` repo secret
+# (npmjs.com → Access Tokens → Granular, scope @yield-cfo, read+write). Then:
+#   git tag verifier-v0.1.0 && git push origin verifier-v0.1.0
+# Local publish (no provenance) also works: cd verifier && npm publish.
+
+on:
+  push:
+    tags:
+      - 'verifier-v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Test before publish
+        run: npm test --workspace verifier
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
+        working-directory: verifier
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

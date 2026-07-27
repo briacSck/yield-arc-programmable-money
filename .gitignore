@@ -38,4 +38,8 @@ forecasts.jsonl
 # shared agent bootstrap + build state, and must stay strategy-free.
 # ─────────────────────────────────────────────────────────────
 docs/PLAN.md
+# ERC draft — PRIVATE until Demo Day (§18.3 disclosure strategy: private circulation only
+# pre-Demo-Day, public post at Demo Day with the live verifier as incumbency proof). Un-gitignore
+# and commit AT Demo Day, not before.
+docs/ERC-DRAFT.md
 .gstack/

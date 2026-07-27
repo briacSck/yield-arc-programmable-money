@@ -10,16 +10,24 @@ signed under a **verifiable on-chain agent identity (ERC-8004)**.
 
 **🟢 LIVE — trading autonomously on Arc testnet since July 14, 2026, no human in the loop.**
 
+[![nightly audit](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml/badge.svg)](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml)
+[![npm](https://img.shields.io/npm/v/@yield-cfo/mandate-verify?color=2a5547&label=mandate-verify)](https://www.npmjs.com/package/@yield-cfo/mandate-verify)
+
 - **Live dashboard:** https://dashboard-production-abea.up.railway.app — every decision, its
-  reason sentence, and its on-chain receipt, with explorer links.
+  reason sentence, and its on-chain receipt, with explorer links, plus a **machine-audit
+  scoreboard**: 5 invariant chips checked nightly by the verifier.
 - **The mandate (on-chain):** [`0x856bec6faadd61b583430e0cd22ec2e211c782b4`](https://testnet.arcscan.app/address/0x856bec6faadd61b583430e0cd22ec2e211c782b4)
   — floor, per-ticket cap, 24h budget, owner-revocable.
 - **Agent identity:** ERC-8004 agentId `850878` · agent wallet [`0x93d9…ab7c`](https://testnet.arcscan.app/address/0x93d9c11c8e9e23e1e97e855668a27a14accaab7c)
   (Circle developer-controlled wallet).
-- **Coming at Checkpoint 2 (Jul 26):** `npx -y @yield-cfo/mandate-verify` — one command that
+- **Machine-checked autonomy — one command:**
+  ```bash
+  npx -y @yield-cfo/mandate-verify
+  ```
   replays the agent's FULL on-chain history and machine-checks every move against the mandate's
-  invariants (floor / ticket / budget window / post-revocation asymmetry / decision receipts).
-  Until then, the dashboard is the run-nothing audit tier.
+  five invariants (floor / ticket / budget window / post-revocation asymmetry / decision receipts)
+  — the live history verifies **5/5 COMPLIANT in ~3 s**. See a violating agent fail the same audit:
+  `npx -y @yield-cfo/mandate-verify --fixture naive-agent`. Source + trust ladder: [`verifier/`](verifier/).
 
 Built on: **Circle Wallets** (developer-controlled, MPC) · **Circle Contracts (SCP)** ·
 **native-USDC gas on Arc** · **ERC-8004 identity** · ERC-8183 (agent-to-agent settlement, W3).
@@ -60,7 +68,7 @@ solvency.** Any degraded input → `HOLD`. All money movement goes through one `
 | `forecast/` | deterministic baseline forecast (+ optional proxy to the t0 model service) |
 | `scenario/` | seeded-ledger generator + simulated-clock demo driver |
 | `dashboard/` | live decision log + explorer links (Next.js, on Railway) |
-| `verifier/` | *(W2)* judge-runnable invariant verifier — replays the mandate's full event history and machine-checks it |
+| `verifier/` | *(W2, **core shipped**)* judge-runnable invariant verifier (`@yield-cfo/mandate-verify`) — two-layer (fetch → pure replay core), machine-checks the 5 mandate invariants over full live history in one command. 17 tests inc. compliant-adversarial fixtures + a live-history golden test |
 | `underwriter/` | *(W3)* Claude Managed Agent that prices insurance for the CFO from its on-chain mandate + verified history — disclosed stub premium, daily certificate output |
 
 ## Status

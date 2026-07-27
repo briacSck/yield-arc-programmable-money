@@ -25,6 +25,47 @@ export interface MandateSnapshotDto {
   agentGasWei: string;
 }
 
+/**
+ * The nightly machine-audit block (plan §18.2). Produced by the verifier (`@yield-cfo/mandate-verify
+ * --json`) in CI, published to the `audit-log` git ref, and spliced into `/api/events` by the proxy
+ * (server-side, short revalidate). The dashboard NEVER computes it (that would couple the camera
+ * surface to RPC health); it only renders what the verifier already decided. Absent when the audit
+ * feed is unreachable — the page falls back to its static hero copy, never blank, never red.
+ */
+export type InvariantStatus = 'PASS' | 'VIOLATION' | 'PENDING' | 'UNVERIFIED';
+
+export interface InvariantChipDto {
+  key: 'floor' | 'ticket' | 'window' | 'asymmetry' | 'receipt';
+  status: InvariantStatus;
+  checks: number;
+  detail: string;
+}
+
+/** Per-move verdict, joined to a LogRow on `txHash` (the dashboard has no keccak dependency). */
+export interface MoveVerdictDto {
+  txHash: string | null;
+  kind: 'DEPLOY' | 'WITHDRAW';
+  floorHeadroomUsdc: string | null;
+  windowUtilization: number | null;
+  receipt: 'match' | 'mismatch';
+  perInvariant: Record<string, InvariantStatus>;
+}
+
+export interface AuditBlock {
+  /** When the nightly verifier run produced this verdict (ISO). */
+  runAt: string;
+  /** Last block the verifier scanned — rows past this render PENDING, not suspicious. */
+  scannedThroughBlock: string | null;
+  compliant: boolean;
+  totalMoves: number;
+  invariants: InvariantChipDto[];
+  closestApproachToFloorUsdc: string | null;
+  /** Keyed by lowercased txHash. */
+  verdictsByTxHash: Record<string, MoveVerdictDto>;
+  /** verifier version + commit, for the provenance line. */
+  version?: string;
+}
+
 /** GET /api/events → everything the page renders. `mandate` is null when the RPC read failed (soft state). */
 export interface EventsResponse {
   agentAddress: string;
@@ -44,6 +85,8 @@ export interface EventsResponse {
   mandate: MandateSnapshotDto | null;
   latestForecast: ForecastSnapshotDto | null;
   events: EventLogRecord[];
+  /** Nightly machine-audit verdict (spliced by the proxy from the audit-log ref); absent if unreachable. */
+  audit?: AuditBlock | null;
 }
 
 /** GET /health → CONTENT-based liveness for the canary/uptime monitor (§15.4). */

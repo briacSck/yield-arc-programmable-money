@@ -4,7 +4,125 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-22 (The Underwriter — W3 §18 CMA beat shipped; Tier-1 live and untouched)_
+_Last updated: 2026-07-23 EOD (worker revived + dashboard v2 audit live + verifier hardened & publish-ready + USYC round-trip proven + heartbeat alert VERIFIED + ERC draft written)_
+
+## Session wrap 2026-07-23 — where the next session picks up
+
+**CP2 A-floor is done** (deadline Mon Jul 27 13:59 Paris). This session, in order: found + fixed an
+8-day silent RPC outage (worker revived, first WITHDRAW landed 18:24); shipped the verifier
+(`@yield-cfo/mandate-verify`, live 5/5 in ~3s) + dashboard v2 audit surface; hardened both via
+`/review` (8 findings fixed); proved the USYC venue on-chain (mint+redeem round-trip) + built the
+`IVenue` seam; **verified the heartbeat alert fires end-to-end** (controlled `/fail` → alert channel
+confirmed buzzing — the outage class can't recur silently now); wrote the **ERC draft** (private).
+
+**Handed off / next-session items:**
+- **npm publish** `@yield-cfo/mandate-verify` → CTO (auth-only; `verifier/PUBLISH.md` has the exact
+  steps — token or CI/provenance). Package is fully built + bundled + pushed.
+- **ERC draft** lives at `docs/ERC-DRAFT.md` — **LOCAL/gitignored, private until Demo Day** (§18.3).
+  Briac to skim the falsification section (Meridian/Firmata positioning is his call).
+- **CP2 submission** (Briac handles; may ask for presentation help over the weekend). Deck link +
+  code link + tracks (DeFi + Agentic Economy).
+- Still gated: wire USYC behind the mandate seam (untouchable path, team nod); second implementer +
+  attestations (W3).
+
+## 🔴 INCIDENT — Tier-1 worker was silently dead 8 days (2026-07-15 → 07-23) — FIXED
+
+**Found + fixed 2026-07-23.** The live worker logged **759 consecutive FAILED cycles** since
+2026-07-15T12:20 UTC — every one `HOLD: cycle inputs failed (RPC Request failed. request limit
+reached)`. Last healthy decision: 2026-07-15T12:05. The agent behaved **correctly** (invariant #4:
+degraded input → HOLD; it never moved money on bad data); the fault was operational, and **two
+single points of failure** hid it:
+
+1. **One RPC host.** The worker ran `ARC_RPC_URL=https://rpc.testnet.arc.network` alone. Measured
+   2026-07-23 against the live mandate: that endpoint + 3 of 4 public Arc endpoints rate-limit
+   `eth_getLogs`/`eth_call` at ~1 req/s; **only `rpc.drpc.testnet.arc.io` answered 10/10
+   concurrent.** Fix: `arcTransport()` in `agent/src/chain/arc-chain.ts` — an ordered viem
+   `fallback` across all working endpoints, wired into the worker read client. `ARC_RPC_URL` is now
+   *prepended* as a preference, never the whole pool, so an override can't re-create the SPOF.
+2. **Heartbeat blind spot.** `pingFail` fired ONLY on gas exhaustion; a `cycle inputs failed` storm
+   pinged SUCCESS every tick → healthchecks.io stayed green over a dead loop. Fix: 3 consecutive
+   FAILED cycles now ping `/fail` (same `failStorm` predicate as `computeHealth`). +2 regression
+   tests. Money-path (scheduler/decision/executor) logic untouched — only the monitoring branch.
+
+Shipped in `50326a2` on `main`. **Railway did NOT auto-deploy from main** (the worker was deployed
+once via CLI on Jul 14 and never re-deployed) — deployed manually via `railway up --service worker`
+2026-07-23 ~18:23 UTC. **REVIVED + VERIFIED:** the first cycle on the new code executed a real
+on-chain **WITHDRAW 1.859676 USDC** at 18:24 (`onChainMoves` 1→2, mandate reads LIVE again); the
+loop is deciding from live chain state and landing moves once more. **Chaos-drill lesson (§15.4):**
+the Friday drill kills the worker and checks the alert — it never caught this because the process
+stayed *up* while every cycle failed. The failStorm ping closes that exact hole. **VERIFIED
+end-to-end 2026-07-23:** a controlled `/fail` ping (healthchecks.io / hc-ping.com) fired the alert
+channel — confirmed received. The alerting chain works; the outage class can no longer stay silent.
+
+## Dashboard v2 — machine-audit surface LIVE (2026-07-23)
+
+**The verifier's proof is now on the judge screen.** Deployed via `railway up --service dashboard`;
+the public `/api/events` serves an `audit` block (COMPLIANT · 5 moves × 5 invariants · 0 violations
+· closest approach $1.00 · 5 verdicts joined by txHash). Built to the §18.2 spec:
+- **Scoreboard band** above the decision log (5 invariant chips, magnitude headline, closest-approach,
+  inline `npx -y @yield-cfo/mandate-verify`), **hero wiring** (the claim strip's first number is now
+  the machine verdict, not a hardcoded `0`), **per-row verdict chips** (join on txHash, supersede the
+  client receipt badge; PENDING past the coverage boundary).
+- **Data seam:** the proxy fetches `verdicts.json` from the `audit-log` git ref (raw.githubusercontent),
+  spliced in parallel with the worker read; every failure path returns null — no plumbing failure ever
+  renders red. **Nightly-audit CI** (`nightly-audit.yml`) runs the verifier and appends to the
+  `audit-log` ref (07:17 UTC + `workflow_dispatch`). Seeded 2026-07-23.
+- **Hardened by `/review`** (two independent adversarial reviewers, 8 findings fixed in `275d789`):
+  wrong-verdict guard (unseeded scan → exit 2), dashboard crash + green-spoof on malformed feed,
+  CI history-destruction (force-push → append), bounded getBlock. Verifier 19/19 tests green.
+
+## USYC venue — REAL, round-trip proven on-chain (2026-07-23)
+
+**The USYC venue works both directions on Arc testnet.** The USYC Teller (`0x9fdF…C105A`, an
+ERC-4626 vault; asset = USDC `0x3600…`, share = USYC `0xe918…b86C`) — the agent wallet is
+allowlisted (`subscriptionLimitRemaining` = 1,000,000 USDC/day; Circle's "USDC allowlist" email
+wording notwithstanding). **Executed live:**
+- **Subscribe** 1 USDC → **0.883398 USYC** (approve `0x9636f289…`, deposit `0x46b1dba7…`). The sub-1
+  ratio is USYC's NAV — each share is worth >1 USDC of accrued T-bill value.
+- **Redeem** 0.883398 USYC → **0.999903 USDC** (`0xfd6e3a65…`). Agent wallet 6.971204 → 6.954969
+  USDC (net ~1.6¢ gas), USYC back to 0. Both legs = the deploy/pull-back pair the CFO loop needs.
+
+Kit: `agent/scripts/usyc-mint-test.ts` (read-only preflight · `--execute --amount <n>` mint ·
+`--execute --redeem` unwind; gas-reserve guarded). **Venue adapter shipped:**
+`agent/src/chain/usyc-venue.ts` — the `IVenue` seam (read-only previews/allowlist + money-move
+*call specs* the `ChainExecutor` signs; never moves money itself, invariant #1). 6 tests + live
+smoke. **NOT yet wired into the live loop** — the mandate contract is frozen and the
+scheduler/executor path is untouchable; wiring USYC as the mandate's deploy target behind the seam
+is the next gated step (needs the team nod, §17.2). Today it's proven + ready, not integrated.
+
+## The Verifier — core shipped (2026-07-23) — the W2 star
+
+**`@yield-cfo/mandate-verify` runs end-to-end against the LIVE chain: full history, 5/5 COMPLIANT,
+~6 s.** The CP2 A-floor is met from source today (npm publish + nightly-audit badge are the
+remaining CP2 items). Built exactly to the §18.1.2b two-layer spec.
+
+- **Pure replay core** (`verifier/src/core/replay.ts`) — the entire trust surface, zero I/O.
+  Reconstructs mandate state event-by-event and re-derives the EXACT predicate the contract
+  enforced at each move. Invariant 3 is the exact lazy tumbling-window replay (not a naive rolling
+  sum — that false-positives on legal history). 17 tests: one violating fixture per invariant (the
+  negative demo) **+** the compliant-adversarial suite that a naive verifier would wrongly flag
+  (legal 2× window-boundary burst, cap exactly filled, balance exactly at floor, setMandate
+  mid-window, emergencyWithdrawAll→refund→deploy, revoke→withdraw→reinstate, one-block multi-deploy)
+  **+** a **golden test against real testnet history**.
+- **Receipt check is PURE-CHAIN** — a discovery this session: the on-chain `forecastHash` arg IS
+  the `forecastInputsHash` that seeds `decisionId = keccak(forecastHash|kind)`
+  (circle-chain-executor.ts:135), verified against all 4 live events. So receipt integrity needs
+  **no preimage API at all** — stronger than the plan assumed (the `GET /forecasts` worker route is
+  now a *nice-to-have* for full preimage disclosure, not a blocker for invariant 5).
+- **fetch layer** (`verifier/src/fetch.ts`) — one address-only `getLogs` per 10k-block chunk,
+  `parseEventLogs({strict:false})` (tolerates Arc EIP-7708 native-transfer logs), ordered by
+  `(blockNumber, logIndex)`, chainId preflight (a wrong `--rpc` can't fake "vacuously compliant").
+  Same measured dRPC-first endpoint pool as the worker fix.
+- **Judge DX** (`verifier/src/cli.ts`) — zero-config default (compiled-in mandate/deploy-block/pool),
+  `--fixture naive-agent` (negative demo, exits 1) · `--fixture live-snapshot` (offline, exits 0) ·
+  `--address`/`--deploy-block` (any conforming deployment) · `--json` · exit codes 0/1/2 · streamed
+  progress · screenshot-able COMPLIANT footer with dashboard + explorer URLs.
+- **Live verdict 2026-07-23:** `4 moves × 5 invariants, 0 violations`; closest approach **$1.00
+  above floor** (a real reconstructed stat, not hardcoded). Deploy block **51743317** (Jul 14
+  08:21 UTC), pinned as a package constant.
+- **Still ahead for CP2/W3:** npm publish (`--provenance`) · nightly-audit CI → `audit-log` ref →
+  dashboard `/api/events` `audit` block + scoreboard band (the design-pinned audit surface) ·
+  `GET /forecasts?inputsHash` worker route for full preimage disclosure · ERC draft. See `TODOS.md`.
 
 ## The Underwriter — CMA beat shipped (2026-07-22)
 
