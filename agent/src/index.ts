@@ -1,5 +1,14 @@
 export * from './chain/index.js';
 export { decide, formatUsdc, type DecideInput } from './decision/engine.js';
+export {
+  assessExposure,
+  type CostLine,
+  type ExposureAssessment,
+  type ExposureConfig,
+  type ExposureStatus,
+  type PriceSignal,
+} from './exposure/engine.js';
+export { buildExposureProvider, type ExposureReading } from './exposure/provider.js';
 export { EventLog } from './event-log.js';
 export { ForecastStore, type ForecastSnapshot } from './forecast-store.js';
 export { runCycle, startScheduler, type CycleDeps, type CycleInputs, type SchedulerOptions } from './scheduler.js';

@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "description": "The autonomous treasury agent: forecast client, decision engine, ChainExecutor, scheduler, heartbeat. Plan §16 / §17.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "start": "tsx src/run.ts"
   },
   "dependencies": {

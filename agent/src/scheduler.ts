@@ -27,6 +27,8 @@ export interface CycleInputs {
   /** Agent wallet holds enough native gas for at least one transaction. */
   gasOk: boolean;
   exposure?: Exposure;
+  /** The exposure signal is configured but untrustworthy — suppresses DEPLOY, never WITHDRAW. */
+  exposureDegraded?: boolean;
 }
 
 export interface CycleDeps {
@@ -100,6 +102,7 @@ export async function runCycle(deps: CycleDeps): Promise<EventLogRecord> {
         config: inputs.config,
         now,
         ...(inputs.exposure ? { exposure: inputs.exposure } : {}),
+        ...(inputs.exposureDegraded ? { exposureDegraded: true } : {}),
       });
 
       deps.forecastStore?.append({ decisionId: decision.id, loggedAt: now, forecast, inputs: baselineInputs });

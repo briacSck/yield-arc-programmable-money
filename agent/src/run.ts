@@ -1,9 +1,11 @@
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createPublicClient, parseAbi, type PublicClient } from 'viem';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
 import { arcTransport, defineArcChain } from './chain/arc-chain.js';
 import { selectChainExecutor } from './chain/index.js';
 import { EventLog } from './event-log.js';
+import { buildExposureProvider } from './exposure/provider.js';
 import { ForecastStore } from './forecast-store.js';
 import { startWorkerServer } from './server.js';
 import { startScheduler, type CycleDeps, type CycleInputs } from './scheduler.js';
@@ -88,6 +90,22 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
   const minTicket = env.MIN_TICKET_USDC && env.MIN_TICKET_USDC !== '0' ? env.MIN_TICKET_USDC : '500000'; // 0.5 USDC default — no dust moves
   const horizonDays = Number(env.HORIZON_DAYS || '30');
 
+  // SPICE leg (§6 planned #2). `null` unless EXPOSURE_SIGNAL_PATH is set — the exposure input
+  // ships dark and is switched on explicitly, never by merge (it can move money via the floor).
+  const readExposure = buildExposureProvider(env);
+
+  /** Fold this cycle's exposure reading into the gathered inputs. No provider ⇒ no-op. */
+  const withExposure = (inputs: CycleInputs): CycleInputs => {
+    if (!readExposure) return inputs;
+    const reading = readExposure(new Date().toISOString());
+    console.log(`[exposure] ${reading.note}`);
+    return {
+      ...inputs,
+      ...(reading.exposure ? { exposure: reading.exposure } : {}),
+      ...(reading.degraded ? { exposureDegraded: true } : {}),
+    };
+  };
+
   const liveGather = async (): Promise<CycleInputs> => {
     if (!mandateAddress) throw new Error('live gather requires AGENT_MANDATE_ADDRESS');
     const client = arcClient(env);
@@ -110,7 +128,7 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
     const remaining = windowOpen ? (dailyCap > windowDeployed ? dailyCap - windowDeployed : 0n) : dailyCap;
     const envUserMin = BigInt(env.USER_MIN_USDC || '0');
 
-    return {
+    return withExposure({
       companyBalanceUsdc: company.toString(),
       deployedUsdc: deployed.toString(),
       // Default trailing 0 ⇒ 0.9×min(...) term vanishes ⇒ safe_floor = chain floor exactly.
@@ -123,16 +141,17 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
         dailyCapRemainingUsdc: remaining.toString(),
       },
       gasOk: gasWei >= GAS_MIN_WEI,
-    };
+    });
   };
 
-  const fixtureGather = (): CycleInputs => ({
-    companyBalanceUsdc: U(10),
-    deployedUsdc: '0',
-    trailing30dMinUsdc: '0',
-    config: { userMinUsdc: U(5), minTicketUsdc: minTicket, horizonDays },
-    gasOk: true,
-  });
+  const fixtureGather = (): CycleInputs =>
+    withExposure({
+      companyBalanceUsdc: U(10),
+      deployedUsdc: '0',
+      trailing30dMinUsdc: '0',
+      config: { userMinUsdc: U(5), minTicketUsdc: minTicket, horizonDays },
+      gasOk: true,
+    });
 
   const log = new EventLog(env.EVENT_LOG_PATH || path.resolve('event-log.jsonl'));
   const forecastStore = new ForecastStore(env.FORECASTS_PATH || path.resolve('forecasts.jsonl'));
@@ -191,7 +210,12 @@ export function makeMandateReader(env: NodeJS.ProcessEnv = process.env) {
 }
 
 // Entrypoint: `npm start --workspace agent` (Railway worker service).
-if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) {
+//
+// The check compares FULL resolved URLs, not basenames. A basename match ("does my module URL end
+// with `run.ts`?") is true for ANY entry script called run.ts — so merely importing this module
+// from, say, `scenario/src/run.ts` started a real scheduler as a side effect of the import.
+const invokedAs = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
+if (invokedAs && import.meta.url === invokedAs) {
   // Local runs load the repo-root .env; Railway injects vars directly (no file — both fine).
   for (const candidate of ['.env', '../.env']) {
     try {

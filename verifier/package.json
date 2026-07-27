@@ -18,7 +18,7 @@
     "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\"",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "verify": "tsx src/cli.ts",
     "snapshot": "tsx scripts/snapshot.ts"
   },
