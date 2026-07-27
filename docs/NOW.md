@@ -4,7 +4,52 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-27 (W3 day 1 — branches merged to `main`, errata fixed, golden snapshot refreshed 4→7 moves)_
+_Last updated: 2026-07-27 (W3 day 1 — everything merged; exposure floor + scenario driver shipped; CI test-skip bug found)_
+
+## W3 day 1 — two core lanes shipped
+
+**Exposure-aware floor (SPICE leg) — §6 planned #2, video beat 3. SHIPPED (PR #4).**
+`agent/src/exposure/engine.ts`: pure, deterministic, BigInt basis-point math —
+`uplift = monthly cost base × line weight × shock × coverage months`. Asymmetric (a spike raises
+the floor, a price drop never lowers it), deadbanded (chatter can't oscillate the floor),
+hard-capped (a runaway feed can't strand the treasury), and **degraded ≠ zero**: a stale/unreadable
+signal suppresses DEPLOY while leaving WITHDRAW available — the same asymmetry the mandate enforces
+on-chain. 11 tests. **The leg is OFF unless `EXPOSURE_SIGNAL_PATH` is set**, so the live loop is
+unchanged; the signal file is the seam the scenario driver writes and a real feed would later write.
+
+**Scenario driver — §11 / §16.5. SHIPPED (PR #5).** `scenario/run.ts` was a stub that threw; it now
+replays 90 seeded days, **bit-identically** (fixed epoch, seeded PRNG, no clock/FS/network in the
+sim; prints a replay digest, tests assert two runs agree). It drives the REAL forecast and decision
+rule — only the world is simulated (ledger, wheat index, a model of the mandate's accounting).
+**All four beats fire** on the pinned seed: DEPLOY 05-02 · WITHDRAW 06-05 · FLOOR_RAISE 05-31 ·
+KICKER 07-20 (owner revokes exactly as the agent reaches for the money → deposit refused → resumes
+after reinstatement). The kicker is tied to the agent's own behaviour, not a hand-picked date, so
+retuning the ledger can't silently delete the scene. 9 tests. Every output carries a SIMULATION
+banner pointing at the live dashboard + verifier.
+
+## 🔴 CI had been silently skipping tests (found + fixed 2026-07-27)
+
+Unquoted `src/**/*.test.ts` is expanded by `sh` as `src/*/*.test.ts`, so **every test file at a
+workspace `src/` root never ran in CI**. Agent: 32 tests in CI vs 58 locally. Not running:
+`trade-gate.sim.test.ts` (the sims that gated real money movement), `scheduler.test.ts`, and
+`verifier/src/golden.test.ts` (the one test meant to catch Arc-RPC decode surprises before the
+nightly badge does). Quoting the glob hands expansion to node. CI now runs **58 agent / 19 verifier**.
+
+It immediately exposed a rotten test: the scheduler in-flight guard runs on the real clock but
+pinned a fixed forecast `asOf`, so since mid-July every decision degraded to HOLD and the executor
+never ran — the guard it exists to prove was untested. Also fixed: importing `@yield/agent` from any
+script named `run.ts` **started a scheduler** (the entrypoint guard compared basenames, not URLs).
+
+## ⚠️ USYC wiring: option (a) is ruled out (2026-07-27)
+
+The planned "executor-level paired move" **cannot work against the frozen contract**.
+`AgentMandate.deposit()` is pure pool accounting, and the native USDC backing both pools is held by
+the mandate contract itself; it makes no external calls and has no path to the Teller. The agent
+wallet could only subscribe USYC with its own gas-wallet USDC — making "the deployed surplus earns
+T-bill yield" false on-chain (invariant #3). **Recommendation: keep the disclosed stub for the
+demo** (the round-trip is a strong standalone DeFi beat; venue re-verified live 2026-07-27,
+allowlisted, 1M USDC/day remaining) and write the venue-aware mandate v2 into the ERC draft as the
+reference integration shape. Full options + costs in `TODOS.md` — **team call (§17.2)**.
 
 ## W3 kickoff 2026-07-27 — merge + housekeeping
 
