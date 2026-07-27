@@ -1,9 +1,9 @@
-{
+﻿{
   "name": "@yield/shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Pinned interface contracts (zod schemas) shared across the agent, forecast, scenario, and dashboard. Plan §16.2 — change only by team agreement (invariant #5).",
+  "description": "Pinned interface contracts (zod schemas) shared across the agent, forecast, scenario, and dashboard. Plan Â§16.2 â€” change only by team agreement (invariant #5).",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "zod": "^3.23.8"

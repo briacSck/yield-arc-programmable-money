@@ -1,12 +1,12 @@
-{
+﻿{
   "name": "@yield/agent",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "The autonomous treasury agent: forecast client, decision engine, ChainExecutor, scheduler, heartbeat. Plan §16 / §17.",
+  "description": "The autonomous treasury agent: forecast client, decision engine, ChainExecutor, scheduler, heartbeat. Plan Â§16 / Â§17.",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "start": "tsx src/run.ts"
   },
   "dependencies": {

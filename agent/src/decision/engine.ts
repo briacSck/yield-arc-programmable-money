@@ -16,6 +16,14 @@ export interface DecideInput {
   now: string;
   /** Optional input-cost exposure driving a FLOOR_RAISE (SPICE leg). */
   exposure?: Exposure;
+  /**
+   * The exposure signal was fed but cannot be trusted (stale/unreadable — see the exposure
+   * engine's `DEGRADED` status). Suppresses risk-ADDING moves only: DEPLOY is held, WITHDRAW
+   * still fires. Invariant #4 applied asymmetrically, the same way the mandate treats deposits
+   * vs withdrawals on-chain — not knowing whether input costs just spiked is a reason to stop
+   * sweeping cash away, never a reason to leave it stranded.
+   */
+  exposureDegraded?: boolean;
 }
 
 const DAY_MS = 86_400_000;
@@ -51,7 +59,8 @@ export function formatUsdc(baseUnits: bigint): string {
  *     surplus = balance − max(safe_floor, min(p10, next ≤30d)), clamped at 0;
  *     execute only when surplus ≥ MIN_TICKET and > 0.
  *   FLOOR_RAISE: exposure uplift present and no money moved — advisory/off-chain only (§17.3).
- *   FAIL-SAFE: stale inputs (>24h), empty/short series, or horizon mismatch → HOLD.
+ *   FAIL-SAFE: stale inputs (>24h), empty/short series, or horizon mismatch → HOLD; a DEGRADED
+ *     exposure signal holds DEPLOY only, leaving WITHDRAW available (asymmetric, see below).
  *
  * Fail-safe philosophy (stated in the video): being wrong must cost opportunity, never solvency.
  */
@@ -126,6 +135,16 @@ export function decide(input: DecideInput): Decision {
       'HOLD',
       0n,
       `HOLD: P10 projects a dip ${formatUsdc(shortfall)} below the safe floor within ${withdrawWindowDays}d — risk-off, not deploying into a projected crunch (nothing deployed to recall).`,
+    );
+  }
+
+  // ── Degraded exposure signal blocks only the risk-ADDING side (the withdraw branch above
+  // already ran, and always will) ──
+  if (input.exposureDegraded) {
+    return finish(
+      'HOLD',
+      0n,
+      'HOLD: the input-cost exposure signal is degraded (stale or unreadable) — not sweeping cash into yield while the exposure picture is unknown. Withdrawals remain available.',
     );
   }
 

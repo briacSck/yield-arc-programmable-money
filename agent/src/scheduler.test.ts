@@ -27,6 +27,11 @@ function tmpDir(): string {
   return mkdtempSync(path.join(tmpdir(), 'yield-'));
 }
 
+/** YYYY-MM-DD `days` from the real clock — for the tests that deliberately run on it. */
+function futureDate(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Inputs that produce a DEPLOY of 5k against the fixture forecast (see engine tests). */
 const deployInputs = (): CycleInputs => ({
   companyBalanceUsdc: U(100_000),
@@ -232,7 +237,16 @@ test('single in-flight guard: a tick during a running cycle is dropped, not queu
     deps({
       executor: slowExecutor,
       cooldownMs: 0,
-      forecast: () => ({ forecast: forecastFixture({ inputsHash: `0x${(n++).toString(16).padStart(2, '0').repeat(32)}` }) }),
+      forecast: () => ({
+        forecast: forecastFixture({
+          // The REAL clock is used below (so cooldown anchoring doesn't interfere), so `asOf` must
+          // track it: a fixture pinned to a fixed date goes stale, every decision degrades to HOLD,
+          // and this test silently stops exercising the guard it exists to prove.
+          asOf: new Date().toISOString(),
+          series: [{ date: futureDate(6), p10: U(95_000), p50: U(100_000), p90: U(110_000) }],
+          inputsHash: `0x${(n++).toString(16).padStart(2, '0').repeat(32)}`,
+        }),
+      }),
       now: undefined, // real clock so cooldown anchoring doesn't interfere
     }),
     { intervalMs: 10 },

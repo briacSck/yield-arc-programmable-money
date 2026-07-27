@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "@yield-cfo/mandate-verify",
   "version": "0.1.0",
   "description": "Judge-runnable invariant verifier for the YIELD AgentMandate: replays an autonomous treasury agent's FULL on-chain history and machine-checks every move against the mandate's five invariants (floor / ticket / 24h budget window / post-revocation asymmetry / decision receipts). One command, zero config.",
@@ -18,7 +18,7 @@
     "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/cli.js --banner:js=\"#!/usr/bin/env node\"",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "verify": "tsx src/cli.ts",
     "snapshot": "tsx scripts/snapshot.ts"
   },
