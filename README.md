@@ -87,7 +87,7 @@ firewall, and it is the one that still answers if the public Arc endpoints are r
 | | What | Cost | If it fails |
 |---|---|---|---|
 | **0** | Watch it: [the live dashboard](https://dashboard-production-abea.up.railway.app) | 0 s | — |
-| **1** | **Offline proof**, no network: `git clone` then `npx tsx verifier/src/cli.ts --fixture live-snapshot` (exits 0) and `--fixture naive-agent` (a rogue agent, **13 violations, exits 1**) | ~1 s | nothing to fail |
+| **1** | **Offline proof**, no network once installed: `git clone … && cd yield-arc-programmable-money && npm install`, then `npx tsx verifier/src/cli.ts --fixture live-snapshot` (exits 0) and `--fixture naive-agent` (a rogue agent, **13 violations, exits 1**) | ~15 s install, ~1 s run | nothing to fail |
 | **2** | **Live history**: `npx tsx verifier/src/cli.ts` — replays every move the agent ever made against all five invariants | ~6 s | falls back to rung 1, exit code 2 |
 | **3** | **Read it**: the entire invariant logic is `verifier/src/core/replay.ts`, zero I/O. Then `npm test -w verifier` | ~2 s | — |
 

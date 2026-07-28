@@ -1,0 +1,82 @@
+name: judge-command
+
+# Runs the command a JUDGE would run, from an EMPTY DIRECTORY, on a machine that has never seen
+# this repo. Nothing else in CI does this, and that gap has now produced the same class of bug
+# three times:
+#
+#   1. `npx -y @yield-cfo/mandate-verify` was printed everywhere for five days while 404ing for the
+#      whole world — it "worked" locally only because npx resolves the workspace symlink first.
+#   2. The clone-path replacement was printed without `npm install`, so it died with
+#      ERR_MODULE_NOT_FOUND and exit 1 — which this project's own exit-code contract defines as
+#      "a real violation", i.e. it looked like our own agent failing its audit.
+#   3. `prepublishOnly` did not run on `npm pack`, so a tarball release would have shipped a stale
+#      bundle with a broken offline fixture path.
+#
+# The rule this enforces: every command printed on the dashboard, in the README or in the deck must
+# have been executed somewhere that has no node_modules and no checkout. If this job is red, a judge
+# following our own instructions gets a failure.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Clone into a clean directory, exactly as a judge would
+        run: |
+          set -euo pipefail
+          WORK="$(mktemp -d)"
+          # Copy rather than re-clone so this also guards a PR's own commit, not just main.
+          cp -r repo "$WORK/yield-arc-programmable-money"
+          cd "$WORK/yield-arc-programmable-money"
+          rm -rf node_modules */node_modules
+          echo "WORK=$WORK" >> "$GITHUB_ENV"
+
+      - name: npm install (the step we forgot to print)
+        working-directory: ${{ env.WORK }}/yield-arc-programmable-money
+        run: npm install
+
+      - name: Rung 1 — the offline snapshot must exit 0
+        working-directory: ${{ env.WORK }}/yield-arc-programmable-money
+        run: npx tsx verifier/src/cli.ts --fixture live-snapshot
+
+      - name: Rung 1 — the rogue agent must exit 1 (the tool working, not failing)
+        working-directory: ${{ env.WORK }}/yield-arc-programmable-money
+        run: |
+          set +e
+          npx tsx verifier/src/cli.ts --fixture naive-agent
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::naive-agent must exit 1 (a real violation). Got $code."
+            exit 1
+          fi
+
+      - name: Rung 2 — the live chain run must exit 0
+        working-directory: ${{ env.WORK }}/yield-arc-programmable-money
+        # Arc's public endpoints rate-limit; a flake here is infrastructure, not a violation, and the
+        # verifier exits 2 for exactly that. Only a genuine VIOLATION (exit 1) should fail this job.
+        run: |
+          set +e
+          npx tsx verifier/src/cli.ts
+          code=$?
+          set -e
+          if [ "$code" -eq 1 ]; then
+            echo "::error::the live history reported a VIOLATION."
+            exit 1
+          fi
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::live run hit an operational error (exit 2) — infrastructure, not a violation."
+          fi
