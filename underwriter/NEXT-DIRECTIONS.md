@@ -1,5 +1,19 @@
 # Next directions
 
+> **Status as of 2026-07-28 — the daily deployment is archived; nothing runs or bills.**
+> `depl_01BJhJXeT2EKbqbd53yAaZnX` was archived 2026-07-28 06:51 UTC after 6 scheduled runs (last: 2026-07-27 07:05 PT). Verified live: `upcoming_runs_at` is empty, the deployment no longer appears in `GET /v1/deployments`, `POST .../pause` returns `400 "Cannot modify archived deployment"`, and all 8 sessions are `idle`. The agent, environment, and `underwriting-history` memory store still exist — they hold state but execute nothing on their own.
+
+## ▶️ Restarting the clock (when there's budget again)
+
+**What:** Put the daily assessor back on schedule.
+**Why it's not just a toggle:** Archive is terminal — the API exposes `pause`/`unpause` but no `unarchive`, so the old deployment object can't be revived.
+**How:** Re-`POST /v1/deployments?beta=true` with the body already saved in `deployment.json` (see `LAUNCH.md` §9), pointing at the **same** `AGENT_ID` / `ENV_ID` / `MEMSTORE_ID` from `IDS.env`. The trend continues uninterrupted because the memory store is untouched. Two things to check before firing:
+1. `initial_events` uses only relative dates ("as of right now") — it does, so it's safe to replay verbatim.
+2. Re-run `evals/` first if the agent version changed while it was off.
+Then write the new `DEPLOYMENT_ID` back into `IDS.env` and `build-sheet.json`, and flip this file's status line.
+
+**On-demand still works today** — `LAUNCH.md` fires the same agent with the same outcome and never depended on the deployment. Each manual run costs cents, so this is the cheap way to keep using it without a schedule.
+
 ## ✅ Shipped this session (on-demand / offline; daily assessor untouched)
 
 ### v1 — Machine-verified flip proof

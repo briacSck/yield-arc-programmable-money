@@ -6,7 +6,7 @@
 ## Where things stand
 
 - **Branch:** `feat/underwriter-cma` · **Draft PR:** [#1](https://github.com/briacSck/yield-arc-programmable-money/pull/1) into `main` (not merged — nothing auto-merges).
-- **The underwriter is LIVE** in Anthropic's Claude Managed Agents (CMA), in Briac's **General** workspace. It ran, graded `satisfied`, and is on a **daily schedule**.
+- **The underwriter is BUILT but no longer scheduled.** It lives in Anthropic's Claude Managed Agents (CMA), in Briac's **General** workspace. It ran, graded `satisfied`, and fired daily through 2026-07-27 — then the deployment was **archived on 2026-07-28** (free credits ran out). Nothing runs or bills now; the agent, environment, and memory store still exist and still work **on demand** via `LAUNCH.md`. See `NEXT-DIRECTIONS.md` → "Restarting the clock".
 - This folder (`underwriter/`) is the complete build kit + the first real run's outputs. It is **not** an npm workspace (not in root `package.json`) — a plain artifact folder; `npm install` at the repo root ignores it.
 
 ## Live objects (in `IDS.env`, committed — handles only, useless without the API key)
@@ -16,7 +16,7 @@
 | 🤖 Agent | `agent_01CyAge5BGszCsVv7Q1Xkr62` (v1) | model `claude-opus-4-8`; base toolset, `web_fetch`/`web_search` disabled |
 | 📦 Environment | `env_01CmB3dEvqSiqDoN9uVr47JF` | cloud, `networking: limited` (2 hosts), `npm: viem` |
 | 🧠 Memory store | `memstore_01Wz8h7HcwWcUaqqPK2RYxgn` | `underwriting-history` — premium trend across runs |
-| 🗓️ Deployment | `depl_01BJhJXeT2EKbqbd53yAaZnX` | daily `0 7 * * *` America/Los_Angeles |
+| 🗓️ Deployment | `depl_01BJhJXeT2EKbqbd53yAaZnX` | ~~daily `0 7 * * *` America/Los_Angeles~~ — **archived 2026-07-28, does not fire.** 6 runs total, last 2026-07-27. Archive is terminal (no `unarchive`); re-create from `deployment.json` to resume |
 | ▶️ First run | `sesn_011VLTmTzjj1fNKRMRCEchsT` | graded satisfied, premium 0.0851 USDC/30d |
 
 Console: `https://platform.claude.com/workspaces/default/agents/agent_01CyAge5BGszCsVv7Q1Xkr62` (switch to the key's workspace with the picker if `default` doesn't resolve).
@@ -39,7 +39,7 @@ Then:
 - **v2 bind flow (on-demand, gated):** `bash bind/bind.sh` → then `bash bind/bind-approve.sh` or `bind/bind-deny.sh`.
 - **Evals:** `bash evals/run-evals.sh <agent-version>` (case-01 baseline is `evals/case-01/expected.*`).
 
-> The daily deployment fires at 07:00 PT and appends a certificate + a memory-trend line each run. Re-running `viewer/build-viewer.sh` any day pulls the newer runs in.
+> ⚠️ **The daily deployment is archived (2026-07-28) — it no longer fires**, so no new certificates accumulate on their own. It appended a certificate + a memory-trend line each run through 2026-07-27; the viewer still reflects those. On-demand runs via `LAUNCH.md` still work and still append to the memory store.
 
 ## Windows gotchas already solved this session (don't rediscover them)
 

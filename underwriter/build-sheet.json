@@ -65,11 +65,22 @@
     "packages": {"npm": ["viem"]}
   },
   "schedule": {
-    "mode": "scheduled",
+    "mode": "archived",
     "cron": "0 7 * * *",
     "timezone": "America/Los_Angeles",
-    "human": "Every day at 7:00 AM Pacific",
-    "kickoff": "user.define_outcome (task + rubric above) — also available on demand via LAUNCH.md and via a manual deployment run"
+    "human": "Was every day at 7:00 AM Pacific — no longer fires",
+    "kickoff": "user.define_outcome (task + rubric above) — still available on demand via LAUNCH.md; the deployment path is archived",
+    "status": {
+      "state": "archived",
+      "archived_at": "2026-07-28T06:51:02Z",
+      "last_run_at": "2026-07-27T14:05:04Z",
+      "runs_fired": 6,
+      "upcoming_runs_at": [],
+      "verified_at": "2026-07-28",
+      "how_verified": "GET /v1/deployments/{id} returns archived_at set and upcoming_runs_at empty; the deployment is absent from GET /v1/deployments; POST .../pause returns 400 'Cannot modify archived deployment'. All sessions idle.",
+      "reversible": false,
+      "note": "Archive is terminal — the API has pause/unpause but no unarchive. To resume, POST a new deployment from deployment.json against the same AGENT_ID + ENV_ID + MEMSTORE_ID; the underwriting history carries over. Nothing in this build spends credits while archived."
+    }
   },
   "evals": {
     "cases": [

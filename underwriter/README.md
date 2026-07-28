@@ -6,7 +6,7 @@ The **§18 underwriter beat**, built on [Claude Managed Agents](https://platform
 
 ## What it does
 
-Every run (daily on a schedule + on-demand), from **public read-only data only**:
+Every run — on-demand today; it also ran on a daily 07:00 PT schedule through 2026-07-27, until that deployment was archived on 2026-07-28 — from **public read-only data only**:
 
 1. Fetches the CFO's public dashboard (`/api/events`).
 2. Writes its own viem script to cross-check the `AgentMandate` contract on Arc testnet (floor / ticket / daily-cap / revoked / balances) and reads the agent wallet's gas.
