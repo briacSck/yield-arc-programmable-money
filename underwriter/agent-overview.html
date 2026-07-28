@@ -18,16 +18,16 @@
       <div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <h1>the-underwriter</h1>
-          <span class="statepill live"><span class="led live"></span>LAUNCHED · LIVE</span>
+          <span class="statepill planned"><span class="led planned"></span>ARCHIVED · NOT RUNNING</span>
         </div>
         <div class="byline">Claude Managed Agent · Briac · YIELD · created 2026-07-22</div>
       </div>
     </div>
     <div class="stats">
       <div class="stat"><div class="stat-k">Model</div><div class="stat-v">claude-opus-4-8</div></div>
-      <div class="stat"><div class="stat-k">Runs</div><div class="stat-v">Daily 7:00 <span class="dim">PT</span></div></div>
+      <div class="stat"><div class="stat-k">Runs</div><div class="stat-v">6 total <span class="dim">· stopped</span></div></div>
       <div class="stat"><div class="stat-k">Agent</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/agents/agent_01CyAge5BGszCsVv7Q1Xkr62">agent_…Xkr62</a> <span class="dim">v1</span></div></div>
-      <div class="stat"><div class="stat-k">Deployment</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a> <span class="dim">daily</span></div></div>
+      <div class="stat"><div class="stat-k">Deployment</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a> <span class="dim">archived</span></div></div>
     </div>
   </div>
 
@@ -40,13 +40,13 @@
     <div class="col">
       <p class="col-title">Trigger</p>
       <div class="node key grow">
-        <div class="node-head"><span class="node-icon">🗓️</span><h2>Deployment</h2><span class="node-meta">cron · <b>0 7 * * *</b></span></div>
+        <div class="node-head"><span class="node-icon">🗓️</span><h2>Deployment</h2><span class="node-meta">archived · <b>no longer fires</b></span></div>
         <div class="node-body">
-          <div class="field"><div class="field-k">schedule · expression / timezone</div><strong>Every day · 7:00 AM</strong> <span class="sub small">America/Los_Angeles</span></div>
-          <div class="field"><div class="field-k">Status</div><span class="tag good">live · <a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a></span> <span class="small sub">next: 2026-07-23 07:00 PT · manual test run fired ✓</span></div>
-          <div class="field"><div class="field-k">initial_events</div><p class="small sub">Each firing replays the 🎯 outcome (right) into a fresh ▶️ session in the sandbox — nobody at a keyboard.</p></div>
+          <div class="field"><div class="field-k">schedule · expression / timezone <span class="sub small">(as built — now inactive)</span></div><strong>Every day · 7:00 AM</strong> <span class="sub small">America/Los_Angeles · <code>0 7 * * *</code></span></div>
+          <div class="field"><div class="field-k">Status</div><span class="tag">archived · <a class="console" href="https://platform.claude.com/workspaces/default/deployments/depl_01BJhJXeT2EKbqbd53yAaZnX">depl_…AaZnX</a></span> <span class="small sub">archived 2026-07-28 06:51 UTC · <b>upcoming_runs_at empty</b> · last run 2026-07-27 07:05 PT · 6 runs total</span></div>
+          <div class="field"><div class="field-k">initial_events</div><p class="small sub">Each firing replayed the 🎯 outcome (right) into a fresh ▶️ session in the sandbox — nobody at a keyboard. Nothing fires now: an archived deployment is terminal and the API refuses to modify it (<code>"Cannot modify archived deployment"</code>).</p></div>
         </div>
-        <div class="node-foot">▶️ Also runs on demand — <code>LAUNCH.md</code> fires the same agent with the same outcome; a manual deployment run tests the cron before trusting it.</div>
+        <div class="node-foot">▶️ Still runs on demand — <code>LAUNCH.md</code> fires the same agent with the same outcome, and that path is unaffected by the archive. To put the clock back: re-create from <code>deployment.json</code> against the same agent + environment + memory store (archive has no undo — there is no <code>unarchive</code>).</div>
       </div>
     </div>
 
@@ -121,7 +121,7 @@
   <!-- ── evals + run log ── -->
   <div class="lane-grid">
     <div class="lane">
-      <div class="lane-head"><span class="node-icon">📜</span><h2>Sessions · run log</h2><span class="lane-meta">2 runs</span></div>
+      <div class="lane-head"><span class="node-icon">📜</span><h2>Sessions · run log</h2><span class="lane-meta">7 runs · stopped</span></div>
       <div class="lane-body">
         <div class="overflow">
         <table>
@@ -129,6 +129,11 @@
           <tbody>
             <tr><td>#1 · on-demand</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_011VLTmTzjj1fNKRMRCEchsT">sesn_…chsT</a></td><td>6 criteria</td><td><span class="tag good">satisfied</span></td><td class="sub">14 PASS · 2 PENDING · 1 UNVERIFIED · premium $0.0851/30d · saved as eval case-01.</td></tr>
             <tr><td>#2 · 🗓️ manual test</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01KVx7iE3rpkAecY58weNm6G">sesn_…Nm6G</a></td><td>6 criteria</td><td><span class="tag">deployment fire ✓</span></td><td class="sub">Proves the daily cron triggers — <span class="mono">drun_…feAZ5</span>.</td></tr>
+            <tr><td>#3 · 🗓️ 07-23</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01HwR8QwY3WscCDPbgeXwWYt">sesn_…xWYt</a></td><td>6 criteria</td><td><span class="tag">ran ✓</span></td><td class="sub">Scheduled fire, <span class="mono">drun_…nuyeE</span>. Not re-graded here — verdict in Console.</td></tr>
+            <tr><td>#4 · 🗓️ 07-24</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01PHZYBEEvALVBRDoYcrDJh7">sesn_…rDJh7</a></td><td>6 criteria</td><td><span class="tag">ran ✓</span></td><td class="sub">Scheduled fire, <span class="mono">drun_…f7ye3</span>. Not re-graded here — verdict in Console.</td></tr>
+            <tr><td>#5 · 🗓️ 07-25</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01DSdCEuC2Fz87R3GTsVidgs">sesn_…Vidgs</a></td><td>6 criteria</td><td><span class="tag">ran ✓</span></td><td class="sub">Scheduled fire, <span class="mono">drun_…Sn7AG</span>. Not re-graded here — verdict in Console.</td></tr>
+            <tr><td>#6 · 🗓️ 07-26</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01Hfd5iPNebSP4dVg3giGRzN">sesn_…GRzN</a></td><td>6 criteria</td><td><span class="tag">ran ✓</span></td><td class="sub">Scheduled fire, <span class="mono">drun_…34dMT</span>. Not re-graded here — verdict in Console.</td></tr>
+            <tr><td>#7 · 🗓️ 07-27</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01NeVtFrbhF8tpQzpHUkJXCL">sesn_…kJXCL</a></td><td>6 criteria</td><td><span class="tag">ran ✓</span></td><td class="sub"><b>Last run.</b> Scheduled fire, <span class="mono">drun_…zowNW</span>. Deployment archived 2026-07-28 — no run since.</td></tr>
           </tbody>
         </table>
         </div>
