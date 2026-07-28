@@ -31,7 +31,17 @@ const TELLER_ABI = parseAbi([
   'function todayTimestamp() view returns (uint256)',
   'function previewDeposit(uint256 assets) view returns (uint256)',
   'function previewRedeem(uint256 shares) view returns (uint256)',
+  // The permission source of truth. The Teller's deposit path asserts against this authority;
+  // everything else on this ABI is economics, not access.
+  'function authority() view returns (address)',
 ]);
+
+const AUTHORITY_ABI = parseAbi([
+  'function canCall(address user, address target, bytes4 functionSig) view returns (bool)',
+]);
+
+/** `deposit(uint256,address)` — the selector the Teller gates subscription on. */
+const DEPOSIT_SELECTOR = '0x6e553f65' as const;
 
 /** A contract call the `ChainExecutor` can sign — mirrors the Circle SDK's execution shape. */
 export interface VenueCall {
@@ -75,14 +85,27 @@ export class USYCVenue implements IVenue {
     return this.read<bigint>('maxRedeem', [account]);
   }
 
-  /** Allowlist proof (read-only): a non-allowlisted wallet reads 0 on both limits. */
+  /**
+   * Is `account` actually permitted to subscribe?
+   *
+   * CORRECTED 2026-07-28. This previously read `subscriptionLimitRemaining > 0 || maxDeposit > 0`
+   * and was a **false positive for every address on the chain**: the Teller returns the same
+   * 1,000,000/day limit for anyone (verified against `0x…deadbeef`), and `maxDeposit` is merely
+   * `min(balanceOf, limit)`. Any funded wallet read as "allowlisted".
+   *
+   * The Teller gates its deposit path on a `RolesAuthority`, so that is what we ask. Measured on
+   * Arc testnet: the agent EOA holds a role and passes; the v1 mandate CONTRACT and the company
+   * EOA hold none and revert `NotPermissioned()`. It is an address allowlist — not an
+   * EOA-vs-contract rule — so a freshly deployed mandate has no permission until Circle grants it.
+   */
   async isAllowlisted(account: `0x${string}`): Promise<boolean> {
-    const today = await this.read<bigint>('todayTimestamp');
-    const [subRemaining, maxDep] = await Promise.all([
-      this.read<bigint>('subscriptionLimitRemaining', [account, today]),
-      this.read<bigint>('maxDeposit', [account]),
-    ]);
-    return subRemaining > 0n || maxDep > 0n;
+    const authority = await this.read<`0x${string}`>('authority');
+    return this.client.readContract({
+      address: authority,
+      abi: AUTHORITY_ABI,
+      functionName: 'canCall',
+      args: [account, USYC_TELLER, DEPOSIT_SELECTOR],
+    }) as Promise<boolean>;
   }
 
   // ── Money-move call specs (executed ONLY by the ChainExecutor) ──────────────

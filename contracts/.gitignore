@@ -4,4 +4,5 @@ cache
 typechain-types
 .env
 deployed-address.txt
+deployed-mandate-v2.txt
 hardhat-node.log
