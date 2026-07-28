@@ -205,6 +205,8 @@ button:focus-visible {
 .kind--hold { color: var(--mute-2); }
 .kind--floor { color: var(--warn); }
 .kind--failed { color: var(--neg); }
+/* The mandate refusing a deposit is the product WORKING, not shame. Sage, never red (PLAN §18.2). */
+.kind--blocked { color: var(--accent); }
 .log-row__reason {
   color: var(--ink-2);
   line-height: 1.45;

@@ -39,9 +39,11 @@ export default function Page() {
   const revoked = data?.mandate?.revoked ?? false;
   const revokedAt = useMemo(() => {
     if (!revoked || !data) return null;
-    // Best local estimate: the first FAILED MandateRevoked record, else now.
+    // The revocation record may have scrolled out of the fetched window. Falling back to `now`
+    // would state a time we do not know — the banner would read "revoked just now" forever, and
+    // the cone would draw the marker at today. An unknown timestamp is reported as unknown.
     const rec = data.events.find((e) => e.error?.includes('MandateRevoked'));
-    return rec?.loggedAt ?? new Date().toISOString();
+    return rec?.loggedAt ?? null;
   }, [revoked, data]);
 
   if (!data && !error) return <main className="wrap"><div className="skeleton">loading the agent&apos;s record…</div></main>;
@@ -69,7 +71,7 @@ export default function Page() {
 
       {revoked && (
         <div className="banner-revoked">
-          The owner revoked the mandate{revokedAt ? ` at ${when(revokedAt)}` : ''}. Deposits are blocked
+          The owner revoked the mandate{revokedAt ? ` at ${when(revokedAt)}` : ' (before this window)'}. Deposits are blocked
           on-chain; withdrawals toward safety remain open. The agent can be re-hired with one transaction.
         </div>
       )}
@@ -83,7 +85,11 @@ export default function Page() {
             <div className="stat__label">{stats.firstOnChainMoveAt ? 'on-chain since ' + stats.firstOnChainMoveAt.slice(0, 10) : 'awaiting first move'}</div>
           </div>
           <div className="stat">
-            <div className="stat__num">{stats.onChainMoves}</div>
+            {/* Chain truth beats worker state. `stats.onChainMoves` is a counter on the worker's
+                volume; it under-reported (5) against the chain (8) after the Jul 23 redeploy. On a
+                page whose whole claim is "the chain is the record", the two must never disagree —
+                so when the verifier has spoken, its count wins. */}
+            <div className="stat__num">{audit ? audit.totalMoves : stats.onChainMoves}</div>
             <div className="stat__label">on-chain decisions</div>
           </div>
           <div className="stat">
@@ -122,6 +128,7 @@ export default function Page() {
           forecast={data.latestForecast?.forecast ?? null}
           floorUsdc={mandate?.floorUsdc ?? null}
           moves={moves}
+          revoked={revoked}
           revokedAt={revokedAt}
         />
       </section>
@@ -147,7 +154,7 @@ export default function Page() {
               key={e.seq}
               record={e}
               verdict={e.execution ? audit?.verdictsByTxHash[e.execution.txHash.toLowerCase()] ?? null : null}
-              auditThroughBlock={audit?.scannedThroughBlock ?? null}
+              auditRunAt={audit?.runAt ?? null}
             />
           ))
         )}
@@ -298,17 +305,23 @@ function Scoreboard({ audit }: { audit: AuditBlock }) {
 function LogRow({
   record,
   verdict,
-  auditThroughBlock,
+  auditRunAt,
 }: {
   record: EventLogRecord;
   verdict?: MoveVerdictDto | null;
-  auditThroughBlock?: string | null;
+  /** When the last nightly audit ran. Distinguishes "not yet audited" from "audited, no verdict". */
+  auditRunAt?: string | null;
 }) {
   const { decision, status, execution } = record;
   const isMove = status === 'CONFIRMED';
-  const isFailed = status === 'FAILED';
+  // A deposit refused because the owner revoked is NOT an ops failure — it is the mandate doing
+  // exactly what it exists to do, and it is the demo's punchline. Red is reserved for verifier
+  // VIOLATIONs and genuine failures (PLAN §18.2); this renders sage as "BLOCKED — mandate enforced".
+  const isBlockedByMandate = status === 'FAILED' && /revok/i.test(record.error ?? '');
+  const isFailed = status === 'FAILED' && !isBlockedByMandate;
   const kindClass =
-    isFailed ? 'kind--failed'
+    isBlockedByMandate ? 'kind--blocked'
+    : isFailed ? 'kind--failed'
     : decision.kind === 'DEPLOY' ? 'kind--deploy'
     : decision.kind === 'WITHDRAW' ? 'kind--withdraw'
     : decision.kind === 'FLOOR_RAISE' ? 'kind--floor'
@@ -316,14 +329,17 @@ function LogRow({
   // The verifier verdict SUPERSEDES the client-side receipt badge (two sources of truth must never
   // disagree on screen). The client check renders only past the coverage boundary, styled provisional.
   const receiptOk = execution ? execution.receiptHash === decision.forecastInputsHash : null;
-  const pastCoverage =
-    isMove && auditThroughBlock && !verdict; // a confirmed move newer than the last audit = PENDING
+  // PENDING vs UNVERIFIED must be distinguishable, and a block number cannot do it: `ExecutionResult`
+  // carries none, so the old `auditThroughBlock && !verdict` test was truthiness only — it called
+  // every unverdicted move PENDING, including ones the audit HAD scanned and simply not covered.
+  // Compare against when the audit ran instead: executed after it ⇒ genuinely not yet audited.
+  const pastCoverage = isMove && !verdict && !!auditRunAt && Date.parse(record.loggedAt) > Date.parse(auditRunAt);
 
   return (
     <div className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}`}>
       <span className="log-row__ts">{when(record.loggedAt)}</span>
       <span className={`kind ${kindClass}`}>
-        {isFailed ? 'FAILED' : decision.kind}
+        {isBlockedByMandate ? 'BLOCKED' : isFailed ? 'FAILED' : decision.kind}
         {isMove ? ` ${usdc(decision.amountUsdc)}` : ''}
       </span>
       <span className="log-row__reason">
