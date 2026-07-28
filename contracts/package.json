@@ -5,7 +5,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy:arc-testnet": "hardhat run scripts/deploy.ts --network arcTestnet"
+    "deploy:arc-testnet": "hardhat run scripts/deploy.ts --network arcTestnet",
+    "deploy:mandate-v2": "hardhat run scripts/deploy-mandate-v2.ts --network arcTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^3.0.10",
