@@ -170,35 +170,62 @@ export function whatIf(
 /**
  * The brief: what the owner tells the agent, in the agent's own units.
  *
- * `floorBaseUnits` is the hard bound the agent may never cross. `yieldAppetite` shifts how much of
- * the headroom above the floor the agent is willing to commit — it is a preference, never a licence
- * to go below the floor, so it can only ever make the agent MORE conservative than its mandate.
+ * `floorBaseUnits` is the hard bound the agent may never cross. `yieldAppetite` is the owner's
+ * off-chain preference — THE semantic, mirrored from agent/src/appetite.ts (one statement, same
+ * everywhere): appetite scales the budget the agent may commit per cycle — conservative = 50% of
+ * the mandate's remaining daily budget, balanced = 75%, opportunistic = 100%. The floor and the
+ * forecast guard are untouched: appetite can only make the agent MORE cautious, never less.
  */
 export type YieldAppetite = 'conservative' | 'balanced' | 'opportunistic';
 
-export const APPETITE_RETAINED_PCT: Record<YieldAppetite, number> = {
+export const APPETITE_BUDGET_PCT: Record<YieldAppetite, number> = {
   conservative: 50,
-  balanced: 25,
-  opportunistic: 10,
+  balanced: 75,
+  opportunistic: 100,
 };
 
+/** The mandate caps the preview must respect — straight off the /events mandate snapshot. */
+export interface MandateCaps {
+  maxTicketUsdc: string;
+  dailyCapUsdc: string;
+  windowDeployedUsdc: string;
+}
+
 /**
- * How much the agent would put to work right now under this brief, given the projected low point.
- * Never returns more than the headroom above the floor, and never a negative number.
+ * How much the agent would put to work right now under this brief — the same arithmetic the
+ * worker feeds its engine, so the number the owner previews is the number the agent would use:
+ *
+ *   min( headroom above max(floor, projected low),
+ *        appetite% of the remaining daily budget (rounded DOWN, like the worker),
+ *        the per-ticket cap )
+ *
+ * `windowDeployedUsdc` is what the current daily window already consumed; the snapshot does not
+ * carry `windowStart`, so the preview always nets it out — the worst case, never MORE than the
+ * agent could actually commit. Never negative, never more than the headroom above the floor.
  */
 export function deployableUnder(
   companyBaseUnits: string,
   floorBaseUnits: string,
   projectedLowBaseUnits: bigint | null,
   appetite: YieldAppetite,
+  caps: MandateCaps,
 ): bigint {
   const balance = BigInt(companyBaseUnits);
   const floor = BigInt(floorBaseUnits);
   // Guard against BOTH the floor and the projected low — the same rule the agent itself applies.
   const guard = projectedLowBaseUnits !== null && projectedLowBaseUnits > floor ? projectedLowBaseUnits : floor;
   const headroom = balance > guard ? balance - guard : 0n;
-  const retained = (headroom * BigInt(APPETITE_RETAINED_PCT[appetite])) / 100n;
-  return headroom - retained;
+
+  const dailyCap = BigInt(caps.dailyCapUsdc);
+  const consumed = BigInt(caps.windowDeployedUsdc);
+  const remaining = dailyCap > consumed ? dailyCap - consumed : 0n;
+  const budget = (remaining * BigInt(APPETITE_BUDGET_PCT[appetite])) / 100n; // truncates = rounds DOWN
+  const ticket = BigInt(caps.maxTicketUsdc);
+
+  let deployable = headroom;
+  if (budget < deployable) deployable = budget;
+  if (ticket < deployable) deployable = ticket;
+  return deployable;
 }
 
 /** yyyy-mm-dd → "28 July". The owner reads dates, not timestamps. */

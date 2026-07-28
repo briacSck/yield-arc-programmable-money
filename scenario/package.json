@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Seeded French-SME ledger + simulated-clock demo driver. 90 days in ~90s, replayable, deterministic. Plan §11 / §16.5.",
+  "main": "./src/sim.ts",
+  "types": "./src/sim.ts",
+  "exports": {
+    ".": {
+      "types": "./src/sim.ts",
+      "default": "./src/sim.ts"
+    }
+  },
   "bin": {
     "scenario": "./src/run.ts"
   },

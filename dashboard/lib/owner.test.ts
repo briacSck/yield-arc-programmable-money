@@ -16,6 +16,9 @@ function forecast(points: Array<[string, number]>): ForecastResult {
   };
 }
 
+/** Realistic mandate caps (the live mandate's shape): ticket 2, daily 5, nothing consumed yet. */
+const CAPS = { maxTicketUsdc: U(2), dailyCapUsdc: U(5), windowDeployedUsdc: '0' };
+
 // ── coverage ──────────────────────────────────────────────────────────────
 
 test('coverage: reports the last date the bad case stays above the floor', () => {
@@ -79,7 +82,7 @@ test('allocation: spare agrees with what the brief says would be deployed', () =
   const floor = U(5);
   const low = BigInt(U(8.4));
   const a = allocation(company, U(1.53), floor, low);
-  const deployable = deployableUnder(company, floor, low, 'opportunistic');
+  const deployable = deployableUnder(company, floor, low, 'opportunistic', CAPS);
   assert.ok(deployable <= a.spare, 'the brief can never propose more than the bar calls spare');
 });
 
@@ -206,25 +209,59 @@ test('whatIf: no forecast yields no answer rather than a guess', () => {
 });
 
 // ── the brief ─────────────────────────────────────────────────────────────
+// THE semantic (one statement, same as agent/src/appetite.ts): appetite scales the budget the
+// agent may commit per cycle — conservative 50% / balanced 75% / opportunistic 100% of the
+// mandate's remaining daily budget. Preview = min(headroom above guard, scaled budget, ticket cap).
+
+/** Roomy caps: neither the ticket nor the daily budget binds, so the guard maths shows through. */
+const ROOMY = { maxTicketUsdc: U(100), dailyCapUsdc: U(100), windowDeployedUsdc: '0' };
 
 test('brief: appetite changes how much is committed, never the floor itself', () => {
-  const low = deployableUnder(U(10), U(5), null, 'conservative');
-  const mid = deployableUnder(U(10), U(5), null, 'balanced');
-  const high = deployableUnder(U(10), U(5), null, 'opportunistic');
+  // Headroom 5 (balance 10, floor 5); daily budget 4 binds, so the appetite scaling is visible.
+  const caps = { maxTicketUsdc: U(10), dailyCapUsdc: U(4), windowDeployedUsdc: '0' };
+  const low = deployableUnder(U(10), U(5), null, 'conservative', caps);
+  const mid = deployableUnder(U(10), U(5), null, 'balanced', caps);
+  const high = deployableUnder(U(10), U(5), null, 'opportunistic', caps);
   assert.ok(low < mid && mid < high, 'appetite is monotonic');
-  // 5 USDC of headroom; even the most aggressive setting leaves the floor untouched.
-  assert.ok(high <= 5_000_000n, 'never commits more than the headroom above the floor');
+  assert.equal(low, 2_000_000n, '50% of the 4 USDC daily budget');
+  assert.equal(mid, 3_000_000n, '75%');
+  assert.equal(high, 4_000_000n, '100% — exactly what the mandate already allowed');
+  // Even the most aggressive setting leaves the floor untouched.
+  const uncapped = deployableUnder(U(10), U(5), null, 'opportunistic', ROOMY);
+  assert.ok(uncapped <= 5_000_000n, 'never commits more than the headroom above the floor');
+});
+
+test('brief: the preview mirrors the worker — scaled budget rounds DOWN, never up', () => {
+  // 5 base units of remaining budget: 50% = 2.5 → 2 (the worker truncates BigInt division too).
+  const caps = { maxTicketUsdc: U(100), dailyCapUsdc: '5', windowDeployedUsdc: '0' };
+  assert.equal(deployableUnder(U(10), U(5), null, 'conservative', caps), 2n);
+  assert.equal(deployableUnder(U(10), U(5), null, 'balanced', caps), 3n);
+});
+
+test('brief: what the window already consumed comes off the budget before scaling', () => {
+  const caps = { maxTicketUsdc: U(10), dailyCapUsdc: U(4), windowDeployedUsdc: U(3) };
+  assert.equal(deployableUnder(U(10), U(5), null, 'opportunistic', caps), 1_000_000n);
+  assert.equal(deployableUnder(U(10), U(5), null, 'conservative', caps), 500_000n);
+  // over-consumed window (cap was lowered mid-window): zero, never negative
+  const over = { maxTicketUsdc: U(10), dailyCapUsdc: U(2), windowDeployedUsdc: U(3) };
+  assert.equal(deployableUnder(U(10), U(5), null, 'opportunistic', over), 0n);
+});
+
+test('brief: the per-ticket cap binds regardless of appetite', () => {
+  const caps = { maxTicketUsdc: U(1), dailyCapUsdc: U(4), windowDeployedUsdc: '0' };
+  assert.equal(deployableUnder(U(10), U(5), null, 'opportunistic', caps), 1_000_000n);
+  assert.equal(deployableUnder(U(10), U(5), null, 'balanced', caps), 1_000_000n, 'min(3, ticket 1) = 1');
 });
 
 test('brief: the projected low binds when it is above the floor', () => {
   // Balance 10, floor 5, but the forecast says it dips to 8 — only 2 is truly spare.
-  const d = deployableUnder(U(10), U(5), BigInt(U(8)), 'opportunistic');
+  const d = deployableUnder(U(10), U(5), BigInt(U(8)), 'opportunistic', ROOMY);
   assert.ok(d <= 2_000_000n, 'guards against the projected low, not just the floor');
 });
 
 test('brief: a balance at or below the floor commits nothing, ever', () => {
-  assert.equal(deployableUnder(U(5), U(5), null, 'opportunistic'), 0n);
-  assert.equal(deployableUnder(U(3), U(5), null, 'opportunistic'), 0n);
+  assert.equal(deployableUnder(U(5), U(5), null, 'opportunistic', ROOMY), 0n);
+  assert.equal(deployableUnder(U(3), U(5), null, 'opportunistic', ROOMY), 0n);
 });
 
 test('dayMonth: renders a readable date and passes junk through', () => {

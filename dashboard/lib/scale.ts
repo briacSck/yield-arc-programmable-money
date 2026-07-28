@@ -18,15 +18,28 @@
 /** USDC base units (6-dec) per euro of the modelled business. */
 export const DEMO_SCALE = 3800;
 
+/**
+ * The ?demo=90d replay runs the persona at FULL business scale — the seeded ledger's EUR figures
+ * read 1:1 as USDC (scenario/src/sim.ts). Rendering it through the live 1:3800 ratio would print
+ * an €83M safety floor for a bakery: every euro on the demo screen would be a fabrication. The
+ * scale is therefore a parameter, defaulting to the live ratio.
+ */
+export const SIM_SCALE = 1;
+
 /** The modelled client. Named on screen so nobody mistakes it for a real customer's books. */
 export const DEMO_CLIENT = 'Boulangerie Chartier';
 
 /** USDC base units → euros of the modelled business. */
-export function toEur(baseUnits: string | bigint): number {
+export function toEur(baseUnits: string | bigint, scale: number = DEMO_SCALE): number {
   const v = typeof baseUnits === 'bigint' ? baseUnits : BigInt(baseUnits || '0');
   // Cents first, so the rounding happens once and in integer space.
-  const cents = (v * BigInt(DEMO_SCALE) * 100n) / 1_000_000n;
+  const cents = (v * BigInt(scale) * 100n) / 1_000_000n;
   return Number(cents) / 100;
+}
+
+/** Euros of the modelled business → USDC base units (string), the reverse mapping of `toEur`. */
+export function eurToUnits(eurValue: number, scale: number = DEMO_SCALE): string {
+  return String(Math.round((eurValue / scale) * 1_000_000));
 }
 
 /** Euros → display string. Whole euros: treasury figures are not read to the cent. */
@@ -40,6 +53,6 @@ export function eur(value: number, opts: { cents?: boolean } = {}): string {
 }
 
 /** USDC base units → euro display string, in one step. */
-export function eurFrom(baseUnits: string | bigint, opts: { cents?: boolean } = {}): string {
-  return eur(toEur(baseUnits), opts);
+export function eurFrom(baseUnits: string | bigint, opts: { cents?: boolean; scale?: number } = {}): string {
+  return eur(toEur(baseUnits, opts.scale ?? DEMO_SCALE), opts);
 }

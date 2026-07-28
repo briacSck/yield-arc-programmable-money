@@ -80,6 +80,23 @@ it is on the front page of a public repo judges will read.
 
 ---
 
+## 3b. Underwriter — Demo Day plan (archived deliberately to save budget; that's fine)
+
+The daily schedule was archived on purpose during build week. Two ways to make it fresh for
+Demo Day, cheapest first:
+
+- **On-demand run the morning of** (recommended): fire `LAUNCH.md`'s on-demand path — a certificate
+  **dated Demo Day**, costs cents, no schedule needed. Do the same before the video shoot so the
+  memo on camera isn't a week old.
+- **Restart the schedule** (only if you want "runs daily" to be present-tense again): archive is
+  terminal in the API — it's a *re-create*, not an un-archive. `underwriter/NEXT-DIRECTIONS.md`
+  documents it: re-`POST` the saved `deployment.json` against the same `AGENT_ID`/`ENV_ID`/
+  `MEMSTORE_ID`, write the new `DEPLOYMENT_ID` back, and the underwriting history continues
+  uninterrupted. Do it ~Aug 18 so two or three fresh runs exist by the 20th.
+
+Either way, the pitch line stays as shipped: *six scheduled assessments, on demand today,
+restorable without losing the trend* — cost discipline, not a gap.
+
 ## 4. Worth more than any of the above
 
 - **Email the RC Pro broker**: *"here's a bounded, owner-revocable, machine-verifiable agent mandate

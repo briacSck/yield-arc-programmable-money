@@ -19,7 +19,24 @@ describe('parseOwnerRequest', () => {
     assert.deepEqual(floor.ok && floor.payload, { floorUsdc: '6000000' });
   });
 
-  it('refuses any action that is not one of the three — nothing else is proxied', () => {
+  it('accepts the appetite action and carries exactly the chosen value', () => {
+    for (const appetite of ['conservative', 'balanced', 'opportunistic'] as const) {
+      const r = parseOwnerRequest({ action: 'appetite', appetite });
+      assert.equal(r.ok, true, `should accept appetite=${appetite}`);
+      assert.equal(r.ok && r.path, '/owner/appetite');
+      assert.deepEqual(r.ok && r.payload, { appetite });
+    }
+  });
+
+  it('refuses any appetite outside conservative|balanced|opportunistic', () => {
+    for (const appetite of ['yolo', 'Conservative', 'OPPORTUNISTIC', '', 42, null, undefined, {}, ['balanced']]) {
+      const r = parseOwnerRequest({ action: 'appetite', appetite });
+      assert.equal(r.ok, false, `should refuse appetite=${JSON.stringify(appetite)}`);
+      assert.match(r.ok === false ? r.error : '', /appetite/);
+    }
+  });
+
+  it('refuses any action that is not an owner action — nothing else is proxied', () => {
     for (const action of ['revoke', 'emergencyWithdrawAll', 'deposit', '', 'PAUSE', 42, null, undefined]) {
       const r = parseOwnerRequest({ action });
       assert.equal(r.ok, false, `should refuse action=${JSON.stringify(action)}`);

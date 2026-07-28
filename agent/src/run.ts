@@ -2,6 +2,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createPublicClient, parseAbi, type PublicClient } from 'viem';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
+import { appetitePath, AppetiteStore, budgetUnderAppetite } from './appetite.js';
 import { arcTransport, defineArcChain } from './chain/arc-chain.js';
 import { selectChainExecutor, selectOwnerActions } from './chain/index.js';
 import { EventLog } from './event-log.js';
@@ -94,6 +95,10 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
   // ships dark and is switched on explicitly, never by merge (it can move money via the floor).
   const readExposure = buildExposureProvider(env);
 
+  // Owner appetite (off-chain preference, written by POST /owner/appetite). Re-read every cycle.
+  // No file ⇒ opportunistic ⇒ ×1.0 ⇒ byte-identical to pre-appetite behaviour. See appetite.ts.
+  const appetiteStore = new AppetiteStore(appetitePath(env));
+
   /** Fold this cycle's exposure reading into the gathered inputs. No provider ⇒ no-op. */
   const withExposure = (inputs: CycleInputs): CycleInputs => {
     if (!readExposure) return inputs;
@@ -126,6 +131,15 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
     const nowSec = BigInt(Math.floor(Date.now() / 1000));
     const windowOpen = nowSec < windowStart + 86_400n;
     const remaining = windowOpen ? (dailyCap > windowDeployed ? dailyCap - windowDeployed : 0n) : dailyCap;
+    // The owner's appetite scales the budget the engine is TOLD it may commit this cycle
+    // (conservative ×0.5, balanced ×0.75, opportunistic ×1.0 — rounded DOWN). Floor, forecast
+    // guard and maxTicket are untouched: appetite can only make the agent MORE cautious.
+    const { appetite, budgetUsdc } = budgetUnderAppetite(remaining, appetiteStore);
+    if (appetite !== 'opportunistic') {
+      console.log(
+        `[appetite] ${appetite}: daily budget scaled ${remaining} → ${budgetUsdc} base units (owner preference, off-chain)`,
+      );
+    }
     const envUserMin = BigInt(env.USER_MIN_USDC || '0');
 
     return withExposure({
@@ -138,7 +152,7 @@ export function buildDeps(env: NodeJS.ProcessEnv = process.env): CycleDeps {
         minTicketUsdc: minTicket,
         horizonDays,
         maxTicketUsdc: maxTicket.toString(),
-        dailyCapRemainingUsdc: remaining.toString(),
+        dailyCapRemainingUsdc: budgetUsdc.toString(),
       },
       gasOk: gasWei >= GAS_MIN_WEI,
     });
@@ -242,6 +256,8 @@ if (invokedAs && import.meta.url === invokedAs) {
       // Independent of SCHEDULER_MODE: revoking is the owner's right, not the agent's capability.
       // `null` when Circle owner creds are absent ⇒ /owner/* answers 503 with the reason.
       ownerActions: selectOwnerActions(process.env),
+      // Same file `liveGather` reads each cycle — /owner/appetite writes it, /events echoes it.
+      appetiteStore: new AppetiteStore(appetitePath(process.env)),
     });
   }
 }

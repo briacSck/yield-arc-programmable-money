@@ -294,6 +294,64 @@ button:focus-visible {
 .uptime i.u-skip { background: var(--mute-2); height: 55%; }
 .uptime i.u-fail { background: var(--neg); height: 100%; }
 
+/* ?demo=90d — the simulation chrome. The banner is PERSISTENT and sticky by design: any
+   screenshot or video frame of the replay carries the disclosure with it. No dismissal. */
+.demo-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--paper);
+  padding: 10px 0 8px;
+}
+.banner-demo {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.banner-demo strong {
+  letter-spacing: 0.04em;
+}
+.banner-demo a {
+  color: var(--warn);
+  text-decoration: underline;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.playbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.playbar__btn {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+.playbar__day {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 9ch;
+}
+.playbar__hint {
+  font-size: 11px;
+  color: var(--mute-2);
+  margin-left: auto;
+}
+.demo-simtx {
+  font-size: 12px;
+  color: var(--mute);
+}
+
 /* States */
 .banner-revoked {
   background: var(--neg-bg);

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { AppetiteStore } from './appetite.js';
 import type { EventLog } from './event-log.js';
 import type { ForecastStore } from './forecast-store.js';
 import { createWorkerRequestListener, type MandateSnapshot, type WorkerServerContext } from './server.js';
@@ -54,7 +58,17 @@ function fakeOwnerActions() {
 }
 
 const servers: Server[] = [];
-after(() => servers.forEach((s) => s.close()));
+const tmpDirs: string[] = [];
+after(() => {
+  servers.forEach((s) => s.close());
+  tmpDirs.forEach((d) => rmSync(d, { recursive: true, force: true }));
+});
+
+function tmpAppetiteStore(): AppetiteStore {
+  const dir = mkdtempSync(path.join(tmpdir(), 'server-appetite-'));
+  tmpDirs.push(dir);
+  return new AppetiteStore(path.join(dir, 'appetite.json'));
+}
 
 async function withServer(overrides: Partial<WorkerServerContext>) {
   const ctx: WorkerServerContext = {
@@ -229,6 +243,61 @@ describe('worker /owner/* — actions', () => {
     assert.equal(res.status, 502);
     assert.equal(res.body.ok, false);
     assert.match(String(res.body.error), /FAILED.*NotOwner/);
+  });
+
+  it('appetite: refuses without the secret (503 unset, 401 wrong) and persists nothing', async () => {
+    const store = tmpAppetiteStore();
+    const noSecret = await withServer({ env: {}, appetiteStore: store });
+    const disabled = await noSecret.post('/owner/appetite', { appetite: 'conservative' });
+    assert.equal(disabled.status, 503, 'unset secret ⇒ endpoint disabled, never open');
+
+    const { post } = await withServer({ appetiteStore: store });
+    const wrong = await post('/owner/appetite', { appetite: 'conservative' }, `${SECRET}x`);
+    assert.equal(wrong.status, 401);
+    assert.equal(store.read(), 'opportunistic', 'a refused request must not change the preference');
+  });
+
+  it('appetite: rejects any value outside conservative|balanced|opportunistic with 400', async () => {
+    const store = tmpAppetiteStore();
+    const { post } = await withServer({ appetiteStore: store });
+    for (const appetite of ['yolo', 'Conservative', '', 42, null, undefined, ['balanced']]) {
+      const res = await post('/owner/appetite', { appetite }, SECRET);
+      assert.equal(res.status, 400, `appetite=${JSON.stringify(appetite)} should be a 400`);
+      assert.equal(res.body.ok, false);
+    }
+    assert.equal(store.read(), 'opportunistic', 'nothing persisted on any refusal');
+  });
+
+  it('appetite: persists the value, echoes it, and /events reflects it (round-trip)', async () => {
+    const store = tmpAppetiteStore();
+    const { port, post } = await withServer({ appetiteStore: store });
+
+    // Before any owner action: /events reports today's default.
+    const before = (await (await fetch(`http://127.0.0.1:${port}/events`)).json()) as Record<string, unknown>;
+    assert.equal(before.appetite, 'opportunistic');
+
+    const res = await post('/owner/appetite', { appetite: 'conservative' }, SECRET);
+    assert.equal(res.status, 200);
+    // Exact shape: off-chain preference ⇒ no txHash, no explorerUrl — no transaction happened.
+    assert.deepEqual(res.body, { ok: true, action: 'SET_APPETITE', appetite: 'conservative' });
+    assert.equal(store.read(), 'conservative');
+
+    const after = (await (await fetch(`http://127.0.0.1:${port}/events`)).json()) as Record<string, unknown>;
+    assert.equal(after.appetite, 'conservative', 'the UI must see reality after a reload');
+  });
+
+  it('appetite: works WITHOUT Circle owner credentials — it is off-chain by design', async () => {
+    const store = tmpAppetiteStore();
+    const { post } = await withServer({ ownerActions: null, appetiteStore: store });
+    const res = await post('/owner/appetite', { appetite: 'balanced' }, SECRET);
+    assert.equal(res.status, 200);
+    assert.equal(store.read(), 'balanced');
+  });
+
+  it('appetite: 503s when no store is configured rather than pretending to save', async () => {
+    const { post } = await withServer({ appetiteStore: null });
+    const res = await post('/owner/appetite', { appetite: 'balanced' }, SECRET);
+    assert.equal(res.status, 503);
   });
 
   it('404s an unknown owner action', async () => {
