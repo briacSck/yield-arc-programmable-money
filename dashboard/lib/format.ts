@@ -44,3 +44,10 @@ export function daysSince(iso: string | null, nowMs = Date.now()): number | null
 }
 
 export const ARCSCAN = 'https://testnet.arcscan.app';
+
+/**
+ * The public repo. Used for the "check it yourself" command, which must be runnable on a machine
+ * that has never seen this code — the npm package is not published, so `npx -y @yield-cfo/…`
+ * 404s for everyone outside the workspace.
+ */
+export const REPO_URL = 'https://github.com/briacSck/yield-arc-programmable-money';

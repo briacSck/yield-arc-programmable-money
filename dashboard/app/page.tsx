@@ -6,7 +6,7 @@ import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
 import type { EventsResponse } from '../src/api-contract';
 import { ForecastCone } from '../components/ForecastCone';
 import { OwnerMode } from '../components/OwnerMode';
-import { ARCSCAN, daysSince, shortHash, usdc, when } from '../lib/format';
+import { ARCSCAN, REPO_URL, daysSince, shortHash, usdc, when } from '../lib/format';
 
 const POLL_MS = 30_000;
 
@@ -326,7 +326,8 @@ function Scoreboard({ audit }: { audit: AuditBlock }) {
             )}
           </div>
           <div className="scoreboard__verify">
-            verify it yourself: <code>npx -y @yield-cfo/mandate-verify</code>
+            {/* Not the npm command: it is unpublished and 404s for anyone outside this repo. */}
+            verify it yourself: <code>git clone {REPO_URL} && npx tsx verifier/src/cli.ts</code>
           </div>
         </div>
 
