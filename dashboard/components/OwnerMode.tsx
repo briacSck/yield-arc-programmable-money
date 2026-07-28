@@ -15,7 +15,7 @@ import {
 } from '../lib/owner';
 import type { OwnerActionName, OwnerActionResponse } from '../lib/owner-action';
 import { DEMO_CLIENT, DEMO_SCALE, eur, eurFrom, toEur } from '../lib/scale';
-import { ARCSCAN, shortHash, usdc, when } from '../lib/format';
+import { ARCSCAN, REPO_URL, shortHash, usdc, when } from '../lib/format';
 
 /**
  * One id per CLICK. The worker turns it into the Circle idempotency key, so a retried click is one
@@ -526,9 +526,13 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
               )}
             </dd>
           </dl>
+          {/* The command printed here MUST be one that runs on a machine that has never seen this
+              repo. `npx -y @yield-cfo/mandate-verify` does not: the package is not published yet,
+              so it 404s for everyone. It reads as working from inside the repo only because npx
+              resolves the workspace symlink first. Swap it back the moment publish lands. */}
           <p className="drill__verify">
             Check it yourself, against the chain, not against us:{' '}
-            <code>npx -y @yield-cfo/mandate-verify</code>
+            <code>git clone {REPO_URL} && npx tsx verifier/src/cli.ts</code>
           </p>
         </div>
       )}
