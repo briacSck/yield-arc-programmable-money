@@ -96,22 +96,46 @@ export interface Allocation {
   inAccount: bigint;
   /** Held back as the safety floor — a slice OF inAccount, not additional to it. */
   reserved: bigint;
+  /**
+   * Above the floor but still held, because the forecast says it is needed before the horizon ends.
+   *
+   * Without this the screen contradicts itself: the bar would show €13,184 "spare" while the brief
+   * says €0 would be put to work. Both were computed correctly — spare was `balance - floor`, but
+   * the agent ALSO guards against the projected low, which is the whole reason it holds. Showing
+   * only the floor makes the agent look idle when it is being careful.
+   */
+  heldForForecast: bigint;
   /** Deployed into the yield venue. */
   working: bigint;
-  /** Liquid above the floor: what the agent could still put to work. */
+  /** Genuinely free: above the floor AND above what the forecast says is coming. */
   spare: bigint;
   total: bigint;
 }
 
-export function allocation(companyBaseUnits: string, deployedBaseUnits: string, floorBaseUnits: string): Allocation {
+/**
+ * `projectedLowBaseUnits` is the worst point the forecast reaches over the horizon. Pass null when
+ * there is no forecast yet — then the floor is the only guard, which is the honest answer.
+ */
+export function allocation(
+  companyBaseUnits: string,
+  deployedBaseUnits: string,
+  floorBaseUnits: string,
+  projectedLowBaseUnits: bigint | null = null,
+): Allocation {
   const inAccount = BigInt(companyBaseUnits);
   const working = BigInt(deployedBaseUnits);
   const floor = BigInt(floorBaseUnits);
   // The floor can exceed the liquid balance (the business had a lean week). Clamp, so the bar never
   // renders a negative segment and never implies the agent stashed money it does not have.
   const reserved = inAccount < floor ? inAccount : floor;
-  const spare = inAccount > floor ? inAccount - floor : 0n;
-  return { inAccount, reserved, working, spare, total: inAccount + working };
+
+  // The same guard the agent applies to itself: max(floor, projected low).
+  const guard = projectedLowBaseUnits !== null && projectedLowBaseUnits > floor ? projectedLowBaseUnits : floor;
+  const guardClamped = inAccount < guard ? inAccount : guard;
+  const heldForForecast = guardClamped > reserved ? guardClamped - reserved : 0n;
+  const spare = inAccount > guardClamped ? inAccount - guardClamped : 0n;
+
+  return { inAccount, reserved, heldForForecast, working, spare, total: inAccount + working };
 }
 
 /**

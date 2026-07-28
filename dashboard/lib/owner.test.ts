@@ -54,8 +54,39 @@ test('allocation: splits liquid cash into reserved floor and spare', () => {
   const a = allocation(U(8.46), U(1.53), U(5));
   assert.equal(a.reserved, 5_000_000n);
   assert.equal(a.spare, 3_460_000n);
+  assert.equal(a.heldForForecast, 0n, 'no forecast guard given, so nothing is held beyond the floor');
   assert.equal(a.working, 1_530_000n);
   assert.equal(a.total, 9_990_000n);
+});
+
+test('allocation: money held for a projected dip is NOT reported as spare', () => {
+  // The live case that made the screen contradict itself: balance 8.46, floor 5, but the forecast
+  // low is 8.4 — so only 0.06 is genuinely free, not the 3.46 above the floor.
+  const a = allocation(U(8.46), U(1.53), U(5), BigInt(U(8.4)));
+  assert.equal(a.reserved, 5_000_000n);
+  assert.equal(a.heldForForecast, 3_400_000n, 'the gap between floor and the projected low');
+  assert.equal(a.spare, 60_000n);
+  assert.equal(
+    a.reserved + a.heldForForecast + a.spare,
+    8_460_000n,
+    'the three liquid segments must always sum to the account balance',
+  );
+});
+
+test('allocation: spare agrees with what the brief says would be deployed', () => {
+  // These two numbers sit next to each other on screen. If they can disagree, the page lies.
+  const company = U(8.46);
+  const floor = U(5);
+  const low = BigInt(U(8.4));
+  const a = allocation(company, U(1.53), floor, low);
+  const deployable = deployableUnder(company, floor, low, 'opportunistic');
+  assert.ok(deployable <= a.spare, 'the brief can never propose more than the bar calls spare');
+});
+
+test('allocation: a projected low BELOW the floor holds nothing extra — the floor already covers it', () => {
+  const a = allocation(U(8.46), U(1.53), U(5), BigInt(U(3)));
+  assert.equal(a.heldForForecast, 0n);
+  assert.equal(a.spare, 3_460_000n);
 });
 
 test('allocation: a lean week never renders a negative segment or invented reserve', () => {
