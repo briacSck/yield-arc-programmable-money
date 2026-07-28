@@ -1,7 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { replay } from './core/replay.js';
-import { loadFixture } from './fixtures.js';
+import { FIXTURE_NAMES, loadFixture } from './fixtures.js';
+
+/**
+ * GUARD: every whitelisted fixture must actually load.
+ *
+ * Refreshing the golden snapshot renames the fixture file. Miss the mapping in `fixtures.ts` — or
+ * ship a `dist/` built before the rename — and `--fixture live-snapshot` dies with a raw ENOENT
+ * stack. That path is the judge's firewall-proof, testnet-wobble-proof fallback: the one command
+ * that still works when Arc is rate-limiting on demo day. It broke exactly this way on 2026-07-27
+ * and nothing caught it, because every test loaded fixtures through the source, never the bundle.
+ */
+test('GUARD: every whitelisted fixture resolves to a file that loads', () => {
+  for (const name of FIXTURE_NAMES) {
+    assert.doesNotThrow(() => loadFixture(name), `fixture "${name}" does not load`);
+  }
+});
 
 /**
  * Golden test — YIELD's real on-chain history at a fixed snapshot (block 53950410, 2026-07-27)
