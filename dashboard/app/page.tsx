@@ -1,40 +1,47 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EventLogRecord } from '@yield/shared';
 import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
 import type { EventsResponse } from '../src/api-contract';
 import { ForecastCone } from '../components/ForecastCone';
+import { OwnerMode } from '../components/OwnerMode';
 import { ARCSCAN, daysSince, shortHash, usdc, when } from '../lib/format';
 
 const POLL_MS = 30_000;
 
+/**
+ * ONE screen. The owner's view on top, the full record below, and every move above drills in place
+ * to its own proof.
+ *
+ * There was briefly a mode toggle here. It was the wrong shape: a toggle shows a reader two
+ * products, when the argument of this one is that the plain sentence and the machine-checkable
+ * record are the SAME object at two depths. An accountant does not want a different screen, they
+ * want the same number with its provenance attached.
+ */
 export default function Page() {
   const [data, setData] = useState<EventsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/events?limit=200', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`upstream ${res.status}`);
-        const body = (await res.json()) as EventsResponse;
-        if (alive) {
-          setData(body);
-          setError(null);
-        }
-      } catch (err) {
-        if (alive) setError((err as Error).message);
-      }
-    };
-    void load();
-    const timer = setInterval(load, POLL_MS);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
+  // Hoisted out of the effect so an owner action can force an immediate re-read the moment its
+  // transaction lands, instead of leaving the screen stale for up to a poll interval.
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events?limit=200', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`upstream ${res.status}`);
+      const body = (await res.json()) as EventsResponse;
+      setData(body);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [load]);
 
   const revoked = data?.mandate?.revoked ?? false;
   const revokedAt = useMemo(() => {
@@ -71,10 +78,31 @@ export default function Page() {
 
       {revoked && (
         <div className="banner-revoked">
-          The owner revoked the mandate{revokedAt ? ` at ${when(revokedAt)}` : ' (before this window)'}. Deposits are blocked
-          on-chain; withdrawals toward safety remain open. The agent can be re-hired with one transaction.
+          You paused your agent. It cannot move money out of your account; anything already working
+          for you can still come back. You can restart it whenever you like.
         </div>
       )}
+
+      {/* ── The product: the owner's screen ───────────────────────────── */}
+      <OwnerMode
+        data={data}
+        onJumpToEvidence={() => document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth' })}
+        onRefresh={() => void load()}
+      />
+
+      {/*
+        ── The evidence, on the SAME page ──────────────────────────────
+        Not a separate mode. An accountant does not want a different screen, they want the same
+        numbers with their provenance attached — so the record lives below the product, reachable
+        by scrolling or by drilling into any single move above.
+      */}
+      <div id="evidence" className="evidence-divider">
+        <h2>The full record</h2>
+        <p className="owner-card__note">
+          Everything above, in the units the chain actually settled and checked against the mandate
+          the owner signed. This is what an accountant, an auditor or a judge reads.
+        </p>
+      </div>
 
       {/* Claim strip */}
       <section className="claim">
@@ -210,19 +238,33 @@ export default function Page() {
         </div>
       </section>
 
-      <footer className="footer">
-        <span className="chip">testnet demo · Boulangerie Chartier persona at 1:3800 scale</span>
-        <a href={`${ARCSCAN}/address/${data.mandateAddress}`} target="_blank" rel="noreferrer">
-          mandate {shortHash(data.mandateAddress)}
-        </a>
-        <a href={`${ARCSCAN}/address/${data.agentAddress}`} target="_blank" rel="noreferrer">
-          agent {shortHash(data.agentAddress)}
-        </a>
-        <a href={`${ARCSCAN}/address/${data.identityRegistry}`} target="_blank" rel="noreferrer">
-          ERC-8004 registry
-        </a>
-      </footer>
+      <Footer data={data} />
     </main>
+  );
+}
+
+/**
+ * Shared by both modes. The scale note lives here and is stated ONCE: owner mode speaks euros at
+ * the business's real scale, advanced mode speaks the USDC actually settled on-chain, and this line
+ * is the stated relationship between them.
+ */
+function Footer({ data }: { data: EventsResponse }) {
+  return (
+    <footer className="footer">
+      <span className="chip">
+        testnet demo · Boulangerie Chartier is a modelled client — real French-SME cash profile,
+        settled on Arc at 1:3800. Every rule enforced at full fidelity; only the amounts are small.
+      </span>
+      <a href={`${ARCSCAN}/address/${data.mandateAddress}`} target="_blank" rel="noreferrer">
+        mandate {shortHash(data.mandateAddress)}
+      </a>
+      <a href={`${ARCSCAN}/address/${data.agentAddress}`} target="_blank" rel="noreferrer">
+        agent {shortHash(data.agentAddress)}
+      </a>
+      <a href={`${ARCSCAN}/address/${data.identityRegistry}`} target="_blank" rel="noreferrer">
+        ERC-8004 registry
+      </a>
+    </footer>
   );
 }
 
@@ -233,12 +275,12 @@ function Header({ revoked, agentId, mode }: { revoked: boolean; agentId: string;
         <span className="brand__mark" />
         YIELD
       </span>
-      <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className={`chip ${revoked ? 'chip--revoked' : 'chip--active'}`}>
+          {revoked ? 'agent paused' : 'agent working'}
+        </span>
         {agentId && <span className="chip">ERC-8004 agent #{agentId}</span>}
         {mode && <span className={`chip ${mode === 'trade' ? 'chip--active' : ''}`}>{mode} mode</span>}
-        <span className={`chip ${revoked ? 'chip--revoked' : 'chip--active'}`}>
-          {revoked ? 'mandate revoked' : 'mandate active'}
-        </span>
       </span>
     </header>
   );

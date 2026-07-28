@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { createPublicClient, parseAbi, type PublicClient } from 'viem';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
 import { arcTransport, defineArcChain } from './chain/arc-chain.js';
-import { selectChainExecutor } from './chain/index.js';
+import { selectChainExecutor, selectOwnerActions } from './chain/index.js';
 import { EventLog } from './event-log.js';
 import { buildExposureProvider } from './exposure/provider.js';
 import { ForecastStore } from './forecast-store.js';
@@ -238,6 +238,10 @@ if (invokedAs && import.meta.url === invokedAs) {
       forecastStore: deps.forecastStore!,
       cycleIntervalMs: intervalMs,
       readMandate: makeMandateReader(process.env),
+      // Owner controls (pause / restart / adjust floor) — the COMPANY wallet, not the agent's.
+      // Independent of SCHEDULER_MODE: revoking is the owner's right, not the agent's capability.
+      // `null` when Circle owner creds are absent ⇒ /owner/* answers 503 with the reason.
+      ownerActions: selectOwnerActions(process.env),
     });
   }
 }
