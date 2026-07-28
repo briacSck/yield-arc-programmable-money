@@ -73,6 +73,13 @@ export interface EventsResponse {
   mandateAddress: string;
   agentIdentityId: string;
   schedulerMode: 'observe' | 'trade';
+  /**
+   * Additive: the owner's persisted yield appetite (off-chain preference, worker volume). Scales
+   * the budget the agent may commit per cycle — conservative 50% / balanced 75% / opportunistic
+   * 100% of the mandate's remaining daily budget. Absent (older worker) ⇒ treat as opportunistic,
+   * which is exactly the pre-appetite behaviour.
+   */
+  appetite?: 'conservative' | 'balanced' | 'opportunistic';
   stats: {
     cycles: number;
     decisions: number;

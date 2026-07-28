@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@yield/scenario": "*",
     "@yield/shared": "*",
     "next": "^15.1.0",
     "react": "^19.0.0",

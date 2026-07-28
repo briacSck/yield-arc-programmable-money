@@ -85,6 +85,17 @@ test('every emitted decision satisfies the shared schema', () => {
   }
 });
 
+test('every tick carries the forecast its decision was made on (same object, same hash)', () => {
+  for (const tick of simulate(defaultSimConfig({ days: 30 }))) {
+    assert.equal(tick.forecast.asOf, `${tick.date}T09:00:00Z`, `day ${tick.day}: forecast is not that day's`);
+    assert.equal(
+      tick.forecast.inputsHash,
+      tick.decision.forecastInputsHash,
+      `day ${tick.day}: the tick's forecast is not the one the decision committed to`,
+    );
+  }
+});
+
 test('the exposure uplift only exists while the wheat pulse is live', () => {
   const config = defaultSimConfig();
   for (const tick of simulate(config)) {

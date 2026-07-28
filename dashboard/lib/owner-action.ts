@@ -8,14 +8,22 @@
  * if they ever disagree, the worker's answer is the one that counts.
  */
 
-export type OwnerActionName = 'pause' | 'resume' | 'floor';
+export type OwnerActionName = 'pause' | 'resume' | 'floor' | 'appetite';
 
 /** Worker path for each action. Keys are the ONLY accepted action names — nothing else is proxied. */
 export const OWNER_ACTION_PATHS: Record<OwnerActionName, string> = {
   pause: '/owner/pause',
   resume: '/owner/resume',
   floor: '/owner/floor',
+  appetite: '/owner/appetite',
 };
+
+/**
+ * The three appetites, mirrored from agent/src/appetite.ts. Appetite is the one OFF-CHAIN owner
+ * action (no transaction — the worker persists a preference the next cycle reads), but it WRITES
+ * agent behaviour, so it travels the same authed path as the on-chain actions.
+ */
+export const APPETITE_VALUES = ['conservative', 'balanced', 'opportunistic'] as const;
 
 /**
  * A mandate bound in 6-decimal USDC base units: positive, canonical, ≤ 18 digits.
@@ -31,7 +39,7 @@ export function parseOwnerRequest(body: unknown): ParsedOwnerRequest {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, error: 'expected a JSON object' };
   }
-  const { action, floorUsdc, requestId } = body as Record<string, unknown>;
+  const { action, floorUsdc, appetite, requestId } = body as Record<string, unknown>;
   if (typeof action !== 'string' || !(action in OWNER_ACTION_PATHS)) {
     return { ok: false, error: `action must be one of: ${Object.keys(OWNER_ACTION_PATHS).join(', ')}` };
   }
@@ -55,14 +63,25 @@ export function parseOwnerRequest(body: unknown): ParsedOwnerRequest {
     payload.floorUsdc = floorUsdc;
   }
 
+  if (name === 'appetite') {
+    if (typeof appetite !== 'string' || !(APPETITE_VALUES as readonly string[]).includes(appetite)) {
+      return { ok: false, error: `appetite must be one of: ${APPETITE_VALUES.join(', ')}` };
+    }
+    payload.appetite = appetite;
+  }
+
   return { ok: true, action: name, path: OWNER_ACTION_PATHS[name], payload };
 }
 
-/** Result of an owner action, as the browser sees it. `txHash` is present only on success. */
+/**
+ * Result of an owner action, as the browser sees it. `txHash` is present only on an ON-CHAIN
+ * success; the off-chain appetite action succeeds with no transaction and echoes `appetite`.
+ */
 export interface OwnerActionResponse {
   ok: boolean;
   action?: string;
   txHash?: string;
   explorerUrl?: string;
+  appetite?: string;
   error?: string;
 }

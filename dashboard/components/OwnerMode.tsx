@@ -6,6 +6,7 @@ import type { EventsResponse, MoveVerdictDto } from '../src/api-contract';
 import {
   agentActivity,
   allocation,
+  APPETITE_BUDGET_PCT,
   coverage,
   dayMonth,
   deployableUnder,
@@ -14,7 +15,7 @@ import {
   type YieldAppetite,
 } from '../lib/owner';
 import type { OwnerActionName, OwnerActionResponse } from '../lib/owner-action';
-import { DEMO_CLIENT, DEMO_SCALE, eur, eurFrom, toEur } from '../lib/scale';
+import { DEMO_CLIENT, DEMO_SCALE, SIM_SCALE, eur, eurFrom, eurToUnits, toEur } from '../lib/scale';
 import { ARCSCAN, REPO_URL, shortHash, usdc, when } from '../lib/format';
 
 /**
@@ -47,21 +48,40 @@ const OWNER_PASS_KEY = 'yield.ownerPass';
  */
 export function OwnerMode({
   data,
+  demo = false,
   onJumpToEvidence,
   onRefresh,
 }: {
   data: EventsResponse;
+  /**
+   * ?demo=90d replay. Owner ACTIONS are disabled — they POST to the real worker and would move
+   * real on-chain state from inside a synthetic replay. The brief slider and the what-if stay
+   * interactive: they are pure previews over the sim's current-day data, and that interactivity
+   * is exactly what makes the demo the product rather than a slideshow.
+   */
+  demo?: boolean;
   onJumpToEvidence: () => void;
   /** Re-read the feed after an owner action lands. */
   onRefresh?: () => void;
 }) {
-  const { mandate, events, latestForecast, audit } = data;
+  const { mandate, events, latestForecast, audit, stats } = data;
   const forecast = latestForecast?.forecast ?? null;
   const revoked = mandate?.revoked ?? false;
 
+  // The euro lens. Live: testnet USDC at 1:3800 (the stated demo-ledger ratio). ?demo=90d: the sim
+  // runs the persona at FULL business scale (€1 reads 1:1 as USDC — scenario/src/sim.ts), so the
+  // live ratio would print an €83M floor for a bakery. One scale, chosen once, used everywhere.
+  const scale = demo ? SIM_SCALE : DEMO_SCALE;
+  const eurAt = (v: string | bigint, o: { cents?: boolean } = {}) => eurFrom(v, { ...o, scale });
+
   // The brief is local until applied: moving a slider must never move money.
   const [floorEur, setFloorEur] = useState<number | null>(null);
-  const [appetite, setAppetite] = useState<YieldAppetite>('balanced');
+  // Same pattern as the floor: null until touched, so the radio always reflects what the AGENT
+  // is actually running (from /events) until the owner picks something new — then "Apply" sends it.
+  const [appetiteChoice, setAppetiteChoice] = useState<YieldAppetite | null>(null);
+  const appliedAppetite: YieldAppetite = data.appetite ?? 'opportunistic';
+  const appetite = appetiteChoice ?? appliedAppetite;
+  const appetiteDirty = appetiteChoice !== null && appetiteChoice !== appliedAppetite;
 
   // ── Owner controls ────────────────────────────────────────────────────────────────────────
   // These write to the mandate for real, through /api/owner → the worker → the company wallet.
@@ -78,7 +98,10 @@ export function OwnerMode({
   );
 
   async function runOwnerAction(action: OwnerActionName, extra: Record<string, string> = {}) {
-    if (pending) return;
+    // ?demo=90d replays a synthetic history — an owner action fired from inside it would still hit
+    // the REAL worker (and, for appetite, rewrite the live agent's brief). Refuse at the choke
+    // point every action funnels through, whatever the buttons render.
+    if (demo || pending) return;
     setPending(action);
     setActionError(null);
     setLastAction(null);
@@ -88,7 +111,13 @@ export function OwnerMode({
       // caller — a public URL that pauses a live agent.
       let pass = window.localStorage.getItem(OWNER_PASS_KEY) ?? '';
       if (!pass) {
-        pass = (window.prompt('Owner passphrase — this action moves real money on-chain.') ?? '').trim();
+        pass = (
+          window.prompt(
+            action === 'appetite'
+              ? 'Owner passphrase — this changes how your agent works your cash.'
+              : 'Owner passphrase — this action moves real money on-chain.',
+          ) ?? ''
+        ).trim();
         if (!pass) {
           setPending(null);
           return;
@@ -117,8 +146,9 @@ export function OwnerMode({
       // floor is set". Instead the "Apply" affordance disappears by itself once the chain agrees.
       onRefresh?.();
       // The mandate read is cached ~15s upstream; one more refresh so the screen ends up truthful
-      // without the owner having to reload.
-      setTimeout(() => onRefresh?.(), CHAIN_CATCHUP_MS);
+      // without the owner having to reload. (Appetite is a worker-side file, not a chain read —
+      // the first refresh already sees it.)
+      if (action !== 'appetite') setTimeout(() => onRefresh?.(), CHAIN_CATCHUP_MS);
     } catch (err) {
       setActionError({ action, message: (err as Error).message });
     } finally {
@@ -127,9 +157,9 @@ export function OwnerMode({
     }
   }
 
-  const mandateFloorEur = mandate ? Math.round(toEur(mandate.floorUsdc)) : 0;
+  const mandateFloorEur = mandate ? Math.round(toEur(mandate.floorUsdc, scale)) : 0;
   const effectiveFloorEur = floorEur ?? mandateFloorEur;
-  const effectiveFloorUnits = String(Math.round((effectiveFloorEur / DEMO_SCALE) * 1_000_000));
+  const effectiveFloorUnits = eurToUnits(effectiveFloorEur, scale);
   const briefDirty = floorEur !== null && floorEur !== mandateFloorEur;
 
   const cover = useMemo(() => coverage(forecast, effectiveFloorUnits), [forecast, effectiveFloorUnits]);
@@ -145,8 +175,11 @@ export function OwnerMode({
   const alloc = mandate
     ? allocation(mandate.companyBalanceUsdc, mandate.deployedUsdc, effectiveFloorUnits, projectedLow)
     : null;
+  // The REAL semantic, previewed: min(headroom above the guard, appetite% of the remaining daily
+  // budget, per-ticket cap) — the same arithmetic the worker feeds its engine, so this number is
+  // the one the agent would actually use.
   const wouldDeploy = mandate
-    ? deployableUnder(mandate.companyBalanceUsdc, effectiveFloorUnits, projectedLow, appetite)
+    ? deployableUnder(mandate.companyBalanceUsdc, effectiveFloorUnits, projectedLow, appetite, mandate)
     : 0n;
 
   return (
@@ -155,7 +188,16 @@ export function OwnerMode({
       <section className="owner-hero">
         <div>
           <div className="eyebrow">
-            Position as of {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {/* In the replay "as of" is the SIMULATED day, never the wall clock — today's date over
+                a seeded ledger would claim a history that did not happen today. */}
+            Position as of{' '}
+            {(demo && stats.lastCycleAt ? new Date(stats.lastCycleAt) : new Date()).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              ...(demo ? { timeZone: 'UTC' } : {}),
+            })}
+            {demo && ' (simulated)'}
             {' · '}
             {DEMO_CLIENT} <span className="owner-modelled">modelled client</span>
           </div>
@@ -179,13 +221,13 @@ export function OwnerMode({
             ) : cover.tightest && cover.tightest.marginBaseUnits >= 0n ? (
               <>
                 At the tightest point ({dayMonth(cover.tightest.date)}) you&apos;d still have{' '}
-                <strong>{eurFrom(cover.tightest.marginBaseUnits)}</strong> above your safety floor,
+                <strong>{eurAt(cover.tightest.marginBaseUnits)}</strong> above your safety floor,
                 even if things go badly.
               </>
             ) : cover.tightest ? (
               <>
                 Around {dayMonth(cover.tightest.date)} your cash could dip{' '}
-                <strong>{eurFrom(-cover.tightest.marginBaseUnits)}</strong> below your safety floor.
+                <strong>{eurAt(-cover.tightest.marginBaseUnits)}</strong> below your safety floor.
                 Your agent is holding money back rather than putting it to work.
               </>
             ) : (
@@ -196,10 +238,10 @@ export function OwnerMode({
 
         <div className="owner-total">
           <div className="label">Total cash</div>
-          <div className="owner-total__num">{alloc ? eurFrom(alloc.total) : '—'}</div>
+          <div className="owner-total__num">{alloc ? eurAt(alloc.total) : '—'}</div>
           <div className="owner-total__note">
             {alloc && alloc.working > 0n
-              ? `${eurFrom(alloc.working)} of it is set aside with your agent`
+              ? `${eurAt(alloc.working)} of it is set aside with your agent`
               : 'none of it is set aside right now'}
           </div>
         </div>
@@ -207,7 +249,7 @@ export function OwnerMode({
 
       {alloc && (
         <section className="card owner-alloc">
-          <AllocationBar alloc={alloc} />
+          <AllocationBar alloc={alloc} scale={scale} />
         </section>
       )}
 
@@ -245,7 +287,8 @@ export function OwnerMode({
                 <button
                   key={a}
                   className={`appetite__btn ${appetite === a ? 'appetite__btn--on' : ''}`}
-                  onClick={() => setAppetite(a)}
+                  onClick={() => setAppetiteChoice(a)}
+                  disabled={pending !== null}
                   aria-pressed={appetite === a}
                 >
                   {a}
@@ -254,13 +297,40 @@ export function OwnerMode({
             </div>
             <p className="owner-card__note">
               A preference, never a licence: this can only make your agent more cautious than your
-              floor already requires. (Preview — this setting is not yet sent to your agent.)
+              floor already requires — it caps each cycle at{' '}
+              {APPETITE_BUDGET_PCT[appetite]}% of the daily budget your mandate allows.
             </p>
+            {appetiteDirty && (
+              <div className="brief-apply">
+                <button
+                  className="btn btn--primary"
+                  disabled={demo || pending !== null}
+                  title={demo ? 'Not available in the simulation — this button changes the real agent' : undefined}
+                  onClick={() => void runOwnerAction('appetite', { appetite: appetiteChoice! })}
+                >
+                  {pending === 'appetite' ? 'Telling your agent…' : `Apply — tell my agent to be ${appetiteChoice}`}
+                </button>
+                <button className="linklike" onClick={() => setAppetiteChoice(null)} disabled={pending !== null}>
+                  reset
+                </button>
+                <div className="owner-controls__note owner-controls__note--wide">
+                  {demo
+                    ? 'Preview only in the simulation — Apply is disabled because it would send a brief to the REAL live agent.'
+                    : 'Previewing only. Applying sends this brief to your agent — no transaction, nothing moves now; it shapes how much your agent may commit from its next cycle on.'}
+                </div>
+              </div>
+            )}
+            <ActionFeedback
+              error={actionError?.action === 'appetite' ? actionError.message : null}
+              result={lastAction?.action === 'appetite' ? lastAction : null}
+              successCopy={`Your agent has the brief. From its next cycle it commits at most ${APPETITE_BUDGET_PCT[appetite]}% of its daily budget — your floor is untouched.`}
+              failureCopy="Your agent's appetite is UNCHANGED."
+            />
           </div>
 
           <div className="brief-outcome">
             <div className="label">Under this brief, right now</div>
-            <div className="brief-outcome__num">{eurFrom(wouldDeploy)}</div>
+            <div className="brief-outcome__num">{eurAt(wouldDeploy)}</div>
             <div className="owner-card__note">
               would be put to work, keeping {eur(effectiveFloorEur)} untouchable and respecting the
               worst case your forecast allows for.
@@ -269,7 +339,8 @@ export function OwnerMode({
               <div className="brief-apply">
                 <button
                   className="btn btn--primary"
-                  disabled={!mandate || pending !== null}
+                  disabled={demo || !mandate || pending !== null}
+                  title={demo ? 'Not available in the simulation — this button moves real money' : undefined}
                   onClick={() => void runOwnerAction('floor', { floorUsdc: effectiveFloorUnits })}
                 >
                   {pending === 'floor' ? 'Setting your floor…' : `Apply — set my floor to ${eur(effectiveFloorEur)}`}
@@ -278,8 +349,9 @@ export function OwnerMode({
                   reset
                 </button>
                 <div className="owner-controls__note owner-controls__note--wide">
-                  Previewing only. Applying writes a real transaction to your mandate on-chain — from
-                  then on the contract itself refuses anything that would cross it.
+                  {demo
+                    ? 'Preview only in the simulation — Apply is disabled because it would write to the REAL mandate on-chain.'
+                    : 'Previewing only. Applying writes a real transaction to your mandate on-chain — from then on the contract itself refuses anything that would cross it.'}
                 </div>
               </div>
             )}
@@ -294,7 +366,7 @@ export function OwnerMode({
       </section>
 
       {/* ── The question an owner actually asks ───────────────────────── */}
-      <WhatIf forecast={forecast} floorUnits={effectiveFloorUnits} />
+      <WhatIf forecast={forecast} floorUnits={effectiveFloorUnits} scale={scale} />
 
       {/* ── What the agent did, drillable in place ────────────────────── */}
       <section className="owner-activity">
@@ -313,6 +385,8 @@ export function OwnerMode({
               <ActivityRow
                 key={a.seq}
                 action={a}
+                demo={demo}
+                scale={scale}
                 verdict={a.txHash ? audit?.verdictsByTxHash[a.txHash.toLowerCase()] ?? null : null}
               />
             ))}
@@ -351,15 +425,17 @@ export function OwnerMode({
           ) : (
             <button
               className="btn"
-              disabled={pending !== null}
+              disabled={demo || pending !== null}
+              title={demo ? 'Not available in the simulation — this button moves real money' : undefined}
               onClick={() => (revoked ? void runOwnerAction('resume') : setConfirmingPause(true))}
             >
               {pending === 'resume' ? 'Restarting…' : revoked ? 'Restart my agent' : 'Pause my agent'}
             </button>
           )}
           <div className="owner-controls__note">
-            Runs as a real transaction on your mandate, signed by your company wallet. In this demo
-            it is protected by a shared secret rather than a wallet sign-in.
+            {demo
+              ? 'Disabled in the simulation: this button pauses the REAL agent with a real on-chain transaction. In the replay, watch the owner do it — the mandate blocks the agent on the day it happens.'
+              : 'Runs as a real transaction on your mandate, signed by your company wallet. In this demo it is protected by a shared secret rather than a wallet sign-in.'}
           </div>
           <ActionFeedback
             error={
@@ -381,8 +457,17 @@ export function OwnerMode({
       </section>
 
       <p className="owner-trust">
-        Every move your agent makes is recorded publicly and can be checked by anyone, including your
-        accountant.{' '}
+        {demo ? (
+          <>
+            In the live product every move is recorded publicly and can be checked by anyone — these
+            simulated moves are not.{' '}
+          </>
+        ) : (
+          <>
+            Every move your agent makes is recorded publicly and can be checked by anyone, including
+            your accountant.{' '}
+          </>
+        )}
         <button className="linklike" onClick={onJumpToEvidence}>
           See the full record →
         </button>
@@ -435,9 +520,18 @@ function ActionFeedback({
 }
 
 /** "Can I afford this?" — the question no SME tool answers with a plan behind it. */
-function WhatIf({ forecast, floorUnits }: { forecast: ForecastResult | null; floorUnits: string }) {
+function WhatIf({
+  forecast,
+  floorUnits,
+  scale,
+}: {
+  forecast: ForecastResult | null;
+  floorUnits: string;
+  /** Euro↔USDC lens — the live 1:3800 ratio, or 1:1 in the full-scale demo replay. */
+  scale: number;
+}) {
   const [monthlyEur, setMonthlyEur] = useState(0);
-  const monthlyUnits = BigInt(Math.round((monthlyEur / DEMO_SCALE) * 1_000_000));
+  const monthlyUnits = BigInt(eurToUnits(monthlyEur, scale));
   const result = useMemo(() => whatIf(forecast, floorUnits, monthlyUnits), [forecast, floorUnits, monthlyUnits]);
   const presets = [1500, 3000, 5000];
 
@@ -474,7 +568,7 @@ function WhatIf({ forecast, floorUnits }: { forecast: ForecastResult | null; flo
             <strong>Yes.</strong> Taking on {eur(monthlyEur)}/month, you stay above your safety floor
             for the whole forecast
             {result.tightest ? (
-              <> — with {eurFrom(result.tightest.marginBaseUnits)} to spare at the tightest point.</>
+              <> — with {eurFrom(result.tightest.marginBaseUnits, { scale })} to spare at the tightest point.</>
             ) : (
               '.'
             )}
@@ -482,7 +576,7 @@ function WhatIf({ forecast, floorUnits }: { forecast: ForecastResult | null; flo
         ) : result.tightest ? (
           <>
             <strong>Not yet.</strong> At {eur(monthlyEur)}/month you&apos;d go{' '}
-            {eurFrom(-result.tightest.marginBaseUnits)} below your safety floor around{' '}
+            {eurFrom(-result.tightest.marginBaseUnits, { scale })} below your safety floor around{' '}
             {dayMonth(result.tightest.date)}
             {result.coveredThrough ? <> — you&apos;re fine until {dayMonth(result.coveredThrough)}.</> : '.'}
           </>
@@ -499,7 +593,19 @@ function WhatIf({ forecast, floorUnits }: { forecast: ForecastResult | null; flo
  * record, the committed forecast hash, the machine verdict and the transaction. Same object, two
  * depths — which is the whole argument of this product in one interaction.
  */
-function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVerdictDto | null }) {
+function ActivityRow({
+  action,
+  demo,
+  scale,
+  verdict,
+}: {
+  action: AgentAction;
+  /** ?demo=90d: the "transaction" is a sim id — plain text, labelled, never an arcscan href. */
+  demo: boolean;
+  /** Euro↔USDC lens — the live 1:3800 ratio, or 1:1 in the full-scale demo replay. */
+  scale: number;
+  verdict: MoveVerdictDto | null;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <li className={`owner-action ${open ? 'owner-action--open' : ''}`}>
@@ -508,26 +614,33 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
           <span className="owner-action__what">
             <span className="owner-action__caret">{open ? '▾' : '▸'}</span> {action.headline}
           </span>
-          <span className="owner-action__amt">{eurFrom(action.amountBaseUnits)}</span>
+          <span className="owner-action__amt">{eurFrom(action.amountBaseUnits, { scale })}</span>
         </span>
-        <span className="owner-action__meta">{when(action.at)}</span>
+        <span className="owner-action__meta">{demo ? action.at.slice(0, 10) : when(action.at)}</span>
       </button>
 
       {open && (
         <div className="drill">
           <p className="drill__reason">{action.reason}</p>
           <dl className="drill__facts">
-            <dt>On-chain amount</dt>
+            <dt>{demo ? 'Simulated amount' : 'On-chain amount'}</dt>
             <dd>{usdc(action.amountBaseUnits)}</dd>
             <dt>Action</dt>
             <dd>{action.kind}</dd>
             {action.txHash && (
               <>
-                <dt>Transaction</dt>
+                <dt>{demo ? 'Simulated move id' : 'Transaction'}</dt>
                 <dd>
-                  <a href={`${ARCSCAN}/tx/${action.txHash}`} target="_blank" rel="noreferrer">
-                    {shortHash(action.txHash)} ↗
-                  </a>
+                  {demo ? (
+                    // Never an explorer href: this id exists only inside the seeded replay.
+                    <span className="mono demo-simtx" title="simulated move — no on-chain transaction exists">
+                      {action.txHash} · simulated
+                    </span>
+                  ) : (
+                    <a href={`${ARCSCAN}/tx/${action.txHash}`} target="_blank" rel="noreferrer">
+                      {shortHash(action.txHash)} ↗
+                    </a>
+                  )}
                 </dd>
               </>
             )}
@@ -540,7 +653,11 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
                   </span>
                 ))
               ) : (
-                <span className="owner-card__note">awaiting the next nightly audit</span>
+                <span className="owner-card__note">
+                  {demo
+                    ? 'simulated — the nightly audit only ever checks the live agent'
+                    : 'awaiting the next nightly audit'}
+                </span>
               )}
             </dd>
           </dl>
@@ -549,8 +666,14 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
               so it 404s for everyone. It reads as working from inside the repo only because npx
               resolves the workspace symlink first. Swap it back the moment publish lands. */}
           <p className="drill__verify">
-            Check it yourself, against the chain, not against us:{' '}
-            <code>git clone {REPO_URL} && cd yield-arc-programmable-money && npm install && npx tsx verifier/src/cli.ts</code>
+            {demo ? (
+              <>Nothing to verify here: this move settled nowhere. The live agent&apos;s record is the one the verifier checks.</>
+            ) : (
+              <>
+                Check it yourself, against the chain, not against us:{' '}
+                <code>git clone {REPO_URL} && cd yield-arc-programmable-money && npm install && npx tsx verifier/src/cli.ts</code>
+              </>
+            )}
           </p>
         </div>
       )}
@@ -558,7 +681,14 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
   );
 }
 
-function AllocationBar({ alloc }: { alloc: ReturnType<typeof allocation> }) {
+function AllocationBar({
+  alloc,
+  scale,
+}: {
+  alloc: ReturnType<typeof allocation>;
+  /** Euro↔USDC lens — the live 1:3800 ratio, or 1:1 in the full-scale demo replay. */
+  scale: number;
+}) {
   const total = Number(alloc.total);
   const pct = (v: bigint) => (total === 0 ? 0 : (Number(v) / total) * 100);
   const segments = [
@@ -582,7 +712,7 @@ function AllocationBar({ alloc }: { alloc: ReturnType<typeof allocation> }) {
         {segments.map((s) => (
           <span key={s.key} className="alloclegend__item">
             <span className={`alloclegend__dot ${s.cls}`} />
-            {s.label} <strong>{eurFrom(s.value)}</strong>
+            {s.label} <strong>{eurFrom(s.value, { scale })}</strong>
           </span>
         ))}
       </div>

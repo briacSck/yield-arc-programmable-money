@@ -1,18 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { EventLogRecord } from '@yield/shared';
+import { defaultSimConfig, simulate } from '@yield/scenario';
 import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
 import type { EventsResponse } from '../src/api-contract';
 import { ForecastCone } from '../components/ForecastCone';
 import { OwnerMode } from '../components/OwnerMode';
+import { demoEventsAt, isDemoRequested } from '../lib/demo';
 import { ARCSCAN, REPO_URL, daysSince, shortHash, usdc, when } from '../lib/format';
 
 const POLL_MS = 30_000;
 
 /**
- * ONE screen. The owner's view on top, the full record below, and every move above drills in place
- * to its own proof.
+ * ONE screen, two feeds. The live path polls `/api/events`; `?demo=90d` replays the deterministic
+ * 90-day scenario simulation CLIENT-SIDE through the SAME `Screen` — same OwnerMode, same cone,
+ * same decision log. The demo is the product, not a mockup; what differs is loudly labelled
+ * (amber banner, no audit verdicts, no explorer links, owner writes disabled).
  *
  * There was briefly a mode toggle here. It was the wrong shape: a toggle shows a reader two
  * products, when the argument of this one is that the plain sentence and the machine-checkable
@@ -20,6 +24,20 @@ const POLL_MS = 30_000;
  * want the same number with its provenance attached.
  */
 export default function Page() {
+  // The demo flag lives in the URL, and the URL lives in the browser — so it resolves after mount.
+  // Until it does, render the same skeleton both paths start with: no flash of the wrong mode, and
+  // the prerendered HTML stays mode-neutral.
+  const [demo, setDemo] = useState<boolean | null>(null);
+  useEffect(() => {
+    setDemo(isDemoRequested(window.location.search));
+  }, []);
+
+  if (demo === null) return <main className="wrap"><div className="skeleton">loading the agent&apos;s record…</div></main>;
+  return demo ? <DemoApp /> : <LiveApp />;
+}
+
+/** The live product: polls the one API route and renders the worker's record. */
+function LiveApp() {
   const [data, setData] = useState<EventsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,21 +61,11 @@ export default function Page() {
     return () => clearInterval(timer);
   }, [load]);
 
-  const revoked = data?.mandate?.revoked ?? false;
-  const revokedAt = useMemo(() => {
-    if (!revoked || !data) return null;
-    // The revocation record may have scrolled out of the fetched window. Falling back to `now`
-    // would state a time we do not know — the banner would read "revoked just now" forever, and
-    // the cone would draw the marker at today. An unknown timestamp is reported as unknown.
-    const rec = data.events.find((e) => e.error?.includes('MandateRevoked'));
-    return rec?.loggedAt ?? null;
-  }, [revoked, data]);
-
   if (!data && !error) return <main className="wrap"><div className="skeleton">loading the agent&apos;s record…</div></main>;
   if (!data) {
     return (
       <main className="wrap">
-        <Header revoked={false} agentId="" mode={null} />
+        <Header revoked={false} agentId="" mode={null} demo={false} />
         <div className="empty">
           The agent&apos;s feed is unreachable right now ({error}). The on-chain record is unaffected —
           retrying automatically.
@@ -65,6 +73,113 @@ export default function Page() {
       </main>
     );
   }
+
+  return <Screen data={data} demo={false} onRefresh={() => void load()} />;
+}
+
+/** ~1 simulated day per second at 1×. */
+const DEMO_TICK_MS = 1000;
+
+/**
+ * `?demo=90d`: the deterministic 90-day scenario, replayed inside the deployed product. The sim is
+ * pure TypeScript (`@yield/scenario`) — it runs right here in the browser, no API route, no worker.
+ * Honesty is structural: `demoEventsAt` never emits an audit block, an explorer URL or a chain
+ * address, and the demo-aware components refuse owner writes and tx links.
+ */
+function DemoApp() {
+  // Computed once per mount; deterministic, so every visitor watches the exact same quarter.
+  const sim = useMemo(() => {
+    const config = defaultSimConfig();
+    return { config, ticks: simulate(config) };
+  }, []);
+  const total = sim.ticks.length;
+
+  const [day, setDay] = useState(1);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState<1 | 8>(1);
+
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setInterval(() => setDay((d) => (d < total ? d + 1 : d)), DEMO_TICK_MS / speed);
+    return () => clearInterval(timer);
+  }, [playing, speed, total]);
+
+  // The replay ends HOLDING on the final day — the camera gets a stable closing frame.
+  useEffect(() => {
+    if (day >= total && playing) setPlaying(false);
+  }, [day, total, playing]);
+
+  const data = useMemo(() => demoEventsAt(sim.config, sim.ticks, day), [sim, day]);
+  const restart = () => {
+    setDay(1);
+    setPlaying(true);
+  };
+  const atEnd = day >= total;
+
+  return (
+    <Screen
+      data={data}
+      demo
+      chrome={
+        <div className="demo-chrome">
+          {/* Persistent and unmissable, by design: sticky, full-width, amber, no dismissal. Any
+              screenshot of this replay carries the disclosure with it. */}
+          <div className="banner-demo" role="alert">
+            <strong>SYNTHETIC 90-DAY SIMULATION</strong> — seeded ledger, modelled mandate, simulated
+            wheat index. Not YIELD&apos;s live history. <a href="/">watch the live agent →</a>
+          </div>
+          <div className="playbar" role="group" aria-label="Simulation playback controls">
+            <button className="btn playbar__btn" onClick={() => (atEnd ? restart() : setPlaying(!playing))}>
+              {playing ? 'Pause' : atEnd ? 'Replay' : 'Play'}
+            </button>
+            <button
+              className="btn playbar__btn"
+              onClick={() => setSpeed(speed === 1 ? 8 : 1)}
+              title="playback speed"
+            >
+              {speed}×
+            </button>
+            <button className="btn playbar__btn" onClick={restart}>
+              Restart
+            </button>
+            <span className="playbar__day mono">
+              day {day}/{total}
+            </span>
+            <span className="playbar__hint">1 second ≈ 1 simulated day</span>
+          </div>
+        </div>
+      }
+    />
+  );
+}
+
+/**
+ * The one screen both feeds render through. `demo` switches ONLY what honesty demands: labels that
+ * would claim the chain ("on-chain decisions", arcscan links), wall-clock-relative timestamps, and
+ * the audit fallbacks. The layout, components and derivations are identical — that is the point.
+ */
+function Screen({
+  data,
+  demo,
+  onRefresh,
+  chrome,
+}: {
+  data: EventsResponse;
+  demo: boolean;
+  onRefresh?: () => void;
+  /** Demo-only sticky strip (banner + playback), rendered above everything. */
+  chrome?: ReactNode;
+}) {
+  const revoked = data.mandate?.revoked ?? false;
+  const revokedAt = useMemo(() => {
+    if (!revoked) return null;
+    // The revocation record may have scrolled out of the fetched window. Falling back to `now`
+    // would state a time we do not know — the banner would read "revoked just now" forever, and
+    // the cone would draw the marker at today. An unknown timestamp is reported as unknown.
+    // (Matches the live worker's 'MandateRevoked' error and the sim's 'mandate revoked' note.)
+    const rec = data.events.find((e) => e.error && /MandateRevoked|mandate revoked/.test(e.error));
+    return rec?.loggedAt ?? null;
+  }, [revoked, data]);
 
   const { stats, mandate, events, audit } = data;
   const moves = events.filter((e) => e.status === 'CONFIRMED');
@@ -74,7 +189,8 @@ export default function Page() {
 
   return (
     <main className="wrap">
-      <Header revoked={revoked} agentId={data.agentIdentityId} mode={data.schedulerMode} />
+      {chrome}
+      <Header revoked={revoked} agentId={data.agentIdentityId} mode={data.schedulerMode} demo={demo} />
 
       {revoked && (
         <div className="banner-revoked">
@@ -86,8 +202,9 @@ export default function Page() {
       {/* ── The product: the owner's screen ───────────────────────────── */}
       <OwnerMode
         data={data}
+        demo={demo}
         onJumpToEvidence={() => document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth' })}
-        onRefresh={() => void load()}
+        onRefresh={onRefresh}
       />
 
       {/*
@@ -106,11 +223,24 @@ export default function Page() {
 
       {/* Claim strip */}
       <section className="claim">
-        <h1>An autonomous CFO, running unattended on Arc.</h1>
+        <h1>
+          {demo
+            ? 'An autonomous CFO — a full simulated quarter, replayed through the real product.'
+            : 'An autonomous CFO, running unattended on Arc.'}
+        </h1>
         <div className="claim__stats">
           <div className="stat">
-            <div className="stat__num">{running !== null ? `${running}d` : '—'}</div>
-            <div className="stat__label">{stats.firstOnChainMoveAt ? 'on-chain since ' + stats.firstOnChainMoveAt.slice(0, 10) : 'awaiting first move'}</div>
+            {demo ? (
+              <>
+                <div className="stat__num">{stats.cycles}d</div>
+                <div className="stat__label">simulated days replayed</div>
+              </>
+            ) : (
+              <>
+                <div className="stat__num">{running !== null ? `${running}d` : '—'}</div>
+                <div className="stat__label">{stats.firstOnChainMoveAt ? 'on-chain since ' + stats.firstOnChainMoveAt.slice(0, 10) : 'awaiting first move'}</div>
+              </>
+            )}
           </div>
           <div className="stat">
             {/* Chain truth beats worker state. `stats.onChainMoves` is a counter on the worker's
@@ -118,7 +248,7 @@ export default function Page() {
                 page whose whole claim is "the chain is the record", the two must never disagree —
                 so when the verifier has spoken, its count wins. */}
             <div className="stat__num">{audit ? audit.totalMoves : stats.onChainMoves}</div>
-            <div className="stat__label">on-chain decisions</div>
+            <div className="stat__label">{demo ? 'simulated moves' : 'on-chain decisions'}</div>
           </div>
           <div className="stat">
             <div className="stat__num">{stats.cycles}</div>
@@ -126,7 +256,8 @@ export default function Page() {
           </div>
           <div className="stat">
             {/* Hero wiring (§18.2): the page's first number is machine-attested when the nightly
-                audit is reachable, and falls back to the honest static claim when it isn't. */}
+                audit is reachable, and falls back to the honest static claim when it isn't. In demo
+                mode there is NEVER an audit block — these moves were not verified by anything. */}
             {audit ? (
               <>
                 <div className="stat__num">
@@ -139,7 +270,9 @@ export default function Page() {
             ) : (
               <>
                 <div className="stat__num">0</div>
-                <div className="stat__label">floor breaches (enforced on-chain)</div>
+                <div className="stat__label">
+                  {demo ? 'floor breaches (simulated mandate)' : 'floor breaches (enforced on-chain)'}
+                </div>
               </>
             )}
           </div>
@@ -150,7 +283,15 @@ export default function Page() {
       <section className="section">
         <div className="section__head">
           <h2>30-day cash horizon — P10–P90, safe floor, and every move the agent made</h2>
-          <span className="eyebrow">{data.latestForecast ? `forecast ${when(data.latestForecast.loggedAt)}` : 'no forecast yet'}</span>
+          <span className="eyebrow">
+            {demo
+              ? data.latestForecast
+                ? `simulated forecast — day ${stats.cycles}`
+                : 'no forecast yet'
+              : data.latestForecast
+                ? `forecast ${when(data.latestForecast.loggedAt)}`
+                : 'no forecast yet'}
+          </span>
         </div>
         <ForecastCone
           forecast={data.latestForecast?.forecast ?? null}
@@ -162,7 +303,8 @@ export default function Page() {
       </section>
 
       {/* Machine-audit scoreboard (§18.2) — the 10-second camera surface. Renders only when the
-          nightly verifier feed is reachable; its absence is silent, never red. */}
+          nightly verifier feed is reachable; its absence is silent, never red. Demo mode never has
+          one: rendering PASS chips over simulated history would fabricate attested evidence. */}
       {audit && <Scoreboard audit={audit} />}
 
       {/* Decision log */}
@@ -181,6 +323,7 @@ export default function Page() {
             <LogRow
               key={e.seq}
               record={e}
+              demo={demo}
               verdict={e.execution ? audit?.verdictsByTxHash[e.execution.txHash.toLowerCase()] ?? null : null}
               auditRunAt={audit?.runAt ?? null}
             />
@@ -192,7 +335,7 @@ export default function Page() {
       <section className="section bottom">
         <div>
           <div className="section__head">
-            <h2>The mandate — an employment contract, on-chain</h2>
+            <h2>{demo ? 'The mandate — modelled at contract fidelity (simulation)' : 'The mandate — an employment contract, on-chain'}</h2>
           </div>
           {mandate ? (
             <div className={`contract${revoked ? ' contract--revoked' : ''}`}>
@@ -230,7 +373,9 @@ export default function Page() {
         <div>
           <div className="section__head">
             <h2>Recent cycles</h2>
-            <span className="eyebrow">last cycle {when(stats.lastCycleAt)}</span>
+            <span className="eyebrow">
+              {demo ? `sim day ${stats.cycles}` : `last cycle ${when(stats.lastCycleAt)}`}
+            </span>
           </div>
           <UptimeStrip events={events} />
           <p className="empty" style={{ paddingTop: 12 }}>
@@ -240,7 +385,7 @@ export default function Page() {
         </div>
       </section>
 
-      <Footer data={data} />
+      <Footer data={data} demo={demo} />
     </main>
   );
 }
@@ -248,9 +393,21 @@ export default function Page() {
 /**
  * Shared by both modes. The scale note lives here and is stated ONCE: owner mode speaks euros at
  * the business's real scale, advanced mode speaks the USDC actually settled on-chain, and this line
- * is the stated relationship between them.
+ * is the stated relationship between them. In demo mode NOTHING here may link to a chain: the
+ * replayed history settled nowhere, so the footer says so instead.
  */
-function Footer({ data }: { data: EventsResponse }) {
+function Footer({ data, demo }: { data: EventsResponse; demo: boolean }) {
+  if (demo) {
+    return (
+      <footer className="footer">
+        <span className="chip chip--warn">
+          SYNTHETIC SIMULATION — Boulangerie Chartier&apos;s quarter, replayed from a seeded ledger
+          at full business scale (€1 reads as 1 USDC). Nothing on this page settled on any chain.
+        </span>
+        <a href="/">watch the live agent →</a>
+      </footer>
+    );
+  }
   return (
     <footer className="footer">
       <span className="chip">
@@ -270,7 +427,17 @@ function Footer({ data }: { data: EventsResponse }) {
   );
 }
 
-function Header({ revoked, agentId, mode }: { revoked: boolean; agentId: string; mode: 'observe' | 'trade' | null }) {
+function Header({
+  revoked,
+  agentId,
+  mode,
+  demo,
+}: {
+  revoked: boolean;
+  agentId: string;
+  mode: 'observe' | 'trade' | null;
+  demo: boolean;
+}) {
   return (
     <header className="header">
       <span className="brand">
@@ -278,6 +445,7 @@ function Header({ revoked, agentId, mode }: { revoked: boolean; agentId: string;
         YIELD
       </span>
       <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {demo && <span className="chip chip--warn">simulation</span>}
         <span className={`chip ${revoked ? 'chip--revoked' : 'chip--active'}`}>
           {revoked ? 'agent paused' : 'agent working'}
         </span>
@@ -349,10 +517,13 @@ function Scoreboard({ audit }: { audit: AuditBlock }) {
 
 function LogRow({
   record,
+  demo,
   verdict,
   auditRunAt,
 }: {
   record: EventLogRecord;
+  /** Demo replay: timestamps are sim dates, and a "move" has a sim id, never a tx link. */
+  demo: boolean;
   verdict?: MoveVerdictDto | null;
   /** When the last nightly audit ran. Distinguishes "not yet audited" from "audited, no verdict". */
   auditRunAt?: string | null;
@@ -362,7 +533,7 @@ function LogRow({
   // A deposit refused because the owner revoked is NOT an ops failure — it is the mandate doing
   // exactly what it exists to do, and it is the demo's punchline. Red is reserved for verifier
   // VIOLATIONs and genuine failures (PLAN §18.2); this renders sage as "BLOCKED — mandate enforced".
-  const isBlockedByMandate = status === 'FAILED' && /revok/i.test(record.error ?? '');
+  const isBlockedByMandate = status === 'FAILED' && /revok|mandate enforced/i.test(record.error ?? '');
   const isFailed = status === 'FAILED' && !isBlockedByMandate;
   const kindClass =
     isBlockedByMandate ? 'kind--blocked'
@@ -382,7 +553,7 @@ function LogRow({
 
   return (
     <div className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}`}>
-      <span className="log-row__ts">{when(record.loggedAt)}</span>
+      <span className="log-row__ts">{demo ? record.loggedAt.slice(0, 10) : when(record.loggedAt)}</span>
       <span className={`kind ${kindClass}`}>
         {isBlockedByMandate ? 'BLOCKED' : isFailed ? 'FAILED' : decision.kind}
         {isMove ? ` ${usdc(decision.amountUsdc)}` : ''}
@@ -394,7 +565,13 @@ function LogRow({
         )}
       </span>
       <span className="log-row__links">
-        {execution && (
+        {execution && demo ? (
+          // The sim's move id is not a transaction. Plain text, labelled, never an explorer href —
+          // and no receipt badge either: nothing checked this move, so nothing gets a checkmark.
+          <span className="mono demo-simtx" title="simulated move — no on-chain transaction exists">
+            {execution.txHash} · simulated
+          </span>
+        ) : execution ? (
           <>
             <a href={execution.explorerUrl} target="_blank" rel="noreferrer">
               tx {shortHash(execution.txHash)}
@@ -414,7 +591,7 @@ function LogRow({
               </span>
             )}
           </>
-        )}
+        ) : null}
       </span>
     </div>
   );

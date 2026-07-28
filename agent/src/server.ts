@@ -9,6 +9,7 @@ import {
   type OwnerActionResult,
   type OwnerActionsPort,
 } from './chain/owner-actions.js';
+import { isAppetite, APPETITE_VALUES, type AppetiteStore } from './appetite.js';
 import type { EventLog } from './event-log.js';
 import type { ForecastStore } from './forecast-store.js';
 
@@ -23,6 +24,9 @@ import type { ForecastStore } from './forecast-store.js';
  *   POST /owner/pause     → AgentMandate.revoke()      ┐ owner-only, shared-secret authed,
  *   POST /owner/resume    → AgentMandate.reinstate()   │ signed by the COMPANY wallet.
  *   POST /owner/floor     → AgentMandate.setMandate()  ┘ See chain/owner-actions.ts.
+ *   POST /owner/appetite  → OFF-CHAIN preference (no Circle call, no transaction): persists the
+ *                           owner's yield appetite to a JSON file on the volume; the next cycle's
+ *                           `liveGather` reads it and scales the daily budget. Same auth as above.
  *
  * Why the owner writes live HERE and not in the dashboard (rules #5/#6): the Circle API key and
  * entity secret exist only in this process. The dashboard is internet-facing; it gets a thin proxy
@@ -49,6 +53,8 @@ export interface WorkerServerContext {
   readMandate?: () => Promise<MandateSnapshot | null>;
   /** Owner controls. Absent/null ⇒ /owner/* answers 503 with a reason (never runs open). */
   ownerActions?: OwnerActionsPort | null;
+  /** Off-chain appetite preference store. Absent ⇒ /owner/appetite answers 503; /events omits it. */
+  appetiteStore?: AppetiteStore | null;
 }
 
 export function computeStats(records: EventLogRecord[]) {
@@ -138,6 +144,38 @@ async function handleOwnerAction(
   const auth = checkOwnerSecret(ctx.env.OWNER_ACTION_SECRET, header(req, 'x-owner-secret'));
   if (!auth.ok) {
     json(res, auth.status, { ok: false, error: auth.error });
+    return;
+  }
+
+  // Appetite is the one OFF-CHAIN owner action: no Circle call, no transaction, so it does not
+  // need (and must not require) the Circle owner credentials the on-chain actions below do. It
+  // still sits behind the same secret — it writes the live agent's behaviour (rule #6).
+  if (action === 'appetite') {
+    if (!ctx.appetiteStore) {
+      json(res, 503, { ok: false, error: 'appetite is not configured on this worker (no appetite store)' });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      if (!isAppetite(body.appetite)) {
+        // JSON.stringify(undefined) is undefined, not a string — hence the ?? before slicing.
+        throw new OwnerActionInputError(
+          `appetite must be one of: ${APPETITE_VALUES.join(', ')} — got ${(JSON.stringify(body.appetite) ?? 'nothing').slice(0, 40)}`,
+        );
+      }
+      ctx.appetiteStore.write(body.appetite);
+      console.log(`[owner] SET_APPETITE ${body.appetite} (off-chain preference — applies from the next cycle)`);
+      json(res, 200, { ok: true, action: 'SET_APPETITE', appetite: body.appetite });
+    } catch (err) {
+      if (err instanceof OwnerActionInputError) {
+        json(res, 400, { ok: false, error: err.message });
+        return;
+      }
+      // A failed persist is reported honestly — the owner must never believe a preference stuck
+      // when the file write did not.
+      console.error(`[owner] appetite FAILED: ${(err as Error).message}`);
+      json(res, 500, { ok: false, error: `the appetite was NOT saved: ${(err as Error).message}` });
+    }
     return;
   }
 
@@ -236,6 +274,8 @@ export function createWorkerRequestListener(ctx: WorkerServerContext) {
             mandateAddress: ctx.env.AGENT_MANDATE_ADDRESS ?? '',
             agentIdentityId: ctx.env.AGENT_IDENTITY_ID ?? '',
             schedulerMode: ctx.env.SCHEDULER_MODE === 'trade' ? 'trade' : 'observe',
+            // Additive: the persisted owner appetite, so the UI reflects reality after a reload.
+            appetite: ctx.appetiteStore ? ctx.appetiteStore.read() : 'opportunistic',
             stats: computeStats(records),
             mandate,
             latestForecast: ctx.forecastStore.latest(),

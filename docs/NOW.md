@@ -30,6 +30,18 @@ _Last updated: 2026-07-28 PM (the endgame day — product live, owner controls l
   v1's escrow earns nothing and the screen no longer implies it does. Appetite labelled preview.
 - **Worker redeployed** (first container attempt crashed, Railway restarted; cycles continuous, no
   state loss). npm publish still blocked on auth → token route in `ACTIONS-FOR-BRIAC.md`.
+- **`?demo=90d` is IN the product**: the deterministic 90-day sim replays client-side through the
+  same components the live agent renders through — sticky amber SIMULATION banner, `audit` always
+  null (no fabricated verdicts), owner writes structurally disabled, zero explorer links for sim
+  moves, playback (pause/1×/8×/restart, ends holding on day 90). Zero API routes in demo mode.
+- **Appetite is REAL**: conservative/balanced/opportunistic caps each cycle at 50/75/100% of the
+  mandate's remaining daily budget (BigInt, round-down), persisted on the worker volume, applied in
+  `liveGather`'s config layer — scheduler/engine/executor zero diffs. No file ⇒ opportunistic ⇒
+  byte-identical to before; corrupt file fails *cautious*. UI preview math now mirrors the real
+  semantic exactly. `POST /owner/appetite` behind the same passphrase gate.
+- **Underwriter daily schedule: archived deliberately** (2026-07-28, budget control during build) —
+  6 scheduled runs done, on-demand works today, restart documented (`ACTIONS-FOR-BRIAC.md` §3b:
+  on-demand run the morning of Demo Day, or re-POST the deployment ~Aug 18).
 - **New docs**: `THESIS.md` (positioning + the six pushes — deck/video/README draw from it),
   `ACTIONS-FOR-BRIAC.md` (USYC support email with the v2 address, npm token route, license call).
 

@@ -1,6 +1,17 @@
-import { assessExposure, decide, type CostLine, type ExposureConfig, type PriceSignal } from '@yield/agent';
+// Deep imports, NOT the '@yield/agent' barrel: the barrel re-exports the Circle executor, the
+// worker HTTP server and the event log (Circle SDK + node:fs/http/crypto), none of which can enter
+// a browser bundle. The dashboard replays this simulation CLIENT-SIDE (?demo=90d), so this file may
+// depend only on the two pure engines it actually drives. Both are pure TypeScript (viem's keccak
+// is browser-safe); the agent files themselves are untouched.
+import { decide } from '../../agent/src/decision/engine.js';
+import {
+  assessExposure,
+  type CostLine,
+  type ExposureConfig,
+  type PriceSignal,
+} from '../../agent/src/exposure/engine.js';
 import { baselineForecast, type BaselineInputs } from '@yield/forecast';
-import type { Decision, Exposure } from '@yield/shared';
+import type { Decision, Exposure, ForecastResult } from '@yield/shared';
 import { BOULANGERIE_CHARTIER } from './persona.js';
 
 /**
@@ -79,6 +90,13 @@ export interface SimTick {
   companyBalanceUsdc: string;
   deployedUsdc: string;
   decision: Decision;
+  /**
+   * The forecast the decision was made on — the SAME object handed to `decide`, so a consumer can
+   * render the cone the agent actually saw that day (`forecast.inputsHash` equals
+   * `decision.forecastInputsHash` by construction). Additive and deterministic: it is computed from
+   * the seeded ledger, so the bit-identical-replay contract is unchanged.
+   */
+  forecast: ForecastResult;
   status: SimStatus;
   /** Deterministic pseudo-tx id — an obvious simulation artefact, never an explorer link. */
   simTxId?: string;
@@ -378,6 +396,7 @@ export function simulate(config: SimConfig = defaultSimConfig()): SimTick[] {
       companyBalanceUsdc: mandate.company.toString(),
       deployedUsdc: mandate.deployed.toString(),
       decision,
+      forecast,
       status,
       revoked: mandate.revoked,
       ...(txId ? { simTxId: txId } : {}),
