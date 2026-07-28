@@ -114,6 +114,69 @@ export function allocation(companyBaseUnits: string, deployedBaseUnits: string, 
   return { inAccount, reserved, working, spare, total: inAccount + working };
 }
 
+/**
+ * What-if: re-run coverage with a recurring monthly commitment added.
+ *
+ * This is the question an owner actually asks — *"can I afford to hire someone at €3,000 a month?"*
+ * — and the one no SME tool answers with a plan behind it. The commitment is pro-rated across the
+ * horizon (a monthly cost accrues daily), applied to the P10 line, and coverage is recomputed.
+ *
+ * `monthlyBaseUnits` is in USDC base units, positive for a cost, negative for new income.
+ */
+export function whatIf(
+  forecast: ForecastResult | null,
+  floorBaseUnits: string | null,
+  monthlyBaseUnits: bigint,
+): Coverage {
+  if (!forecast) return { coveredThrough: null, coveredWholeHorizon: false, tightest: null };
+  const startMs = Date.parse(`${forecast.asOf.slice(0, 10)}T00:00:00Z`);
+  const shifted: ForecastResult = {
+    ...forecast,
+    series: forecast.series.map((p) => {
+      const dayIndex = Math.max(0, Math.round((Date.parse(`${p.date}T00:00:00Z`) - startMs) / 86_400_000));
+      // Pro-rate by elapsed days over a 30-day month. Integer maths: no float drift into money.
+      const accrued = (monthlyBaseUnits * BigInt(dayIndex)) / 30n;
+      const p10 = BigInt(p.p10) - accrued;
+      return { ...p, p10: (p10 < 0n ? 0n : p10).toString() };
+    }),
+  };
+  return coverage(shifted, floorBaseUnits);
+}
+
+/**
+ * The brief: what the owner tells the agent, in the agent's own units.
+ *
+ * `floorBaseUnits` is the hard bound the agent may never cross. `yieldAppetite` shifts how much of
+ * the headroom above the floor the agent is willing to commit — it is a preference, never a licence
+ * to go below the floor, so it can only ever make the agent MORE conservative than its mandate.
+ */
+export type YieldAppetite = 'conservative' | 'balanced' | 'opportunistic';
+
+export const APPETITE_RETAINED_PCT: Record<YieldAppetite, number> = {
+  conservative: 50,
+  balanced: 25,
+  opportunistic: 10,
+};
+
+/**
+ * How much the agent would put to work right now under this brief, given the projected low point.
+ * Never returns more than the headroom above the floor, and never a negative number.
+ */
+export function deployableUnder(
+  companyBaseUnits: string,
+  floorBaseUnits: string,
+  projectedLowBaseUnits: bigint | null,
+  appetite: YieldAppetite,
+): bigint {
+  const balance = BigInt(companyBaseUnits);
+  const floor = BigInt(floorBaseUnits);
+  // Guard against BOTH the floor and the projected low — the same rule the agent itself applies.
+  const guard = projectedLowBaseUnits !== null && projectedLowBaseUnits > floor ? projectedLowBaseUnits : floor;
+  const headroom = balance > guard ? balance - guard : 0n;
+  const retained = (headroom * BigInt(APPETITE_RETAINED_PCT[appetite])) / 100n;
+  return headroom - retained;
+}
+
 /** yyyy-mm-dd → "28 July". The owner reads dates, not timestamps. */
 export function dayMonth(isoDate: string): string {
   const t = Date.parse(`${isoDate}T00:00:00Z`);

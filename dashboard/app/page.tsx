@@ -11,39 +11,17 @@ import { ARCSCAN, daysSince, shortHash, usdc, when } from '../lib/format';
 const POLL_MS = 30_000;
 
 /**
- * `owner` is the product: the screen the business owner reads. `advanced` is the instrument: the
- * mandate, the five invariants, the receipts and the verifier command, for a controller, an
- * accountant, or anyone who wants to check rather than trust.
+ * ONE screen. The owner's view on top, the full record below, and every move above drills in place
+ * to its own proof.
  *
- * Persisted, and settable by `?mode=` so the video and the README can deep-link either one.
+ * There was briefly a mode toggle here. It was the wrong shape: a toggle shows a reader two
+ * products, when the argument of this one is that the plain sentence and the machine-checkable
+ * record are the SAME object at two depths. An accountant does not want a different screen, they
+ * want the same number with its provenance attached.
  */
-type Mode = 'owner' | 'advanced';
-const MODE_KEY = 'yield.mode';
-
 export default function Page() {
   const [data, setData] = useState<EventsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>('owner');
-
-  // Resolve the mode once on mount: an explicit ?mode= wins, then the last choice, then owner.
-  useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('mode');
-    if (fromUrl === 'owner' || fromUrl === 'advanced') {
-      setMode(fromUrl);
-      return;
-    }
-    const stored = window.localStorage.getItem(MODE_KEY);
-    if (stored === 'owner' || stored === 'advanced') setMode(stored);
-  }, []);
-
-  const chooseMode = (next: Mode) => {
-    setMode(next);
-    try {
-      window.localStorage.setItem(MODE_KEY, next);
-    } catch {
-      /* private browsing — the choice just doesn't persist */
-    }
-  };
 
   useEffect(() => {
     let alive = true;
@@ -82,7 +60,7 @@ export default function Page() {
   if (!data) {
     return (
       <main className="wrap">
-        <Header revoked={false} agentId="" mode={null} viewMode={mode} onModeChange={chooseMode} />
+        <Header revoked={false} agentId="" mode={null} />
         <div className="empty">
           The agent&apos;s feed is unreachable right now ({error}). The on-chain record is unaffected —
           retrying automatically.
@@ -97,44 +75,36 @@ export default function Page() {
   const gasLow = mandate ? BigInt(mandate.agentGasWei) < 5n * 10n ** 16n : false;
   const auditViolations = audit ? audit.invariants.reduce((n, iv) => n + (iv.status === 'VIOLATION' ? 1 : 0), 0) : null;
 
-  if (mode === 'owner') {
-    return (
-      <main className="wrap">
-        <Header
-          revoked={revoked}
-          agentId={data.agentIdentityId}
-          mode={data.schedulerMode}
-          viewMode={mode}
-          onModeChange={chooseMode}
-        />
-        {revoked && (
-          <div className="banner-revoked">
-            You paused your agent. It cannot move money out of your account; anything already working
-            for you can still come back. You can restart it whenever you like.
-          </div>
-        )}
-        <OwnerMode data={data} onShowAdvanced={() => chooseMode('advanced')} />
-        <Footer data={data} />
-      </main>
-    );
-  }
-
   return (
     <main className="wrap">
-      <Header
-        revoked={revoked}
-        agentId={data.agentIdentityId}
-        mode={data.schedulerMode}
-        viewMode={mode}
-        onModeChange={chooseMode}
-      />
+      <Header revoked={revoked} agentId={data.agentIdentityId} mode={data.schedulerMode} />
 
       {revoked && (
         <div className="banner-revoked">
-          The owner revoked the mandate{revokedAt ? ` at ${when(revokedAt)}` : ' (before this window)'}. Deposits are blocked
-          on-chain; withdrawals toward safety remain open. The agent can be re-hired with one transaction.
+          You paused your agent. It cannot move money out of your account; anything already working
+          for you can still come back. You can restart it whenever you like.
         </div>
       )}
+
+      {/* ── The product: the owner's screen ───────────────────────────── */}
+      <OwnerMode
+        data={data}
+        onJumpToEvidence={() => document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth' })}
+      />
+
+      {/*
+        ── The evidence, on the SAME page ──────────────────────────────
+        Not a separate mode. An accountant does not want a different screen, they want the same
+        numbers with their provenance attached — so the record lives below the product, reachable
+        by scrolling or by drilling into any single move above.
+      */}
+      <div id="evidence" className="evidence-divider">
+        <h2>The full record</h2>
+        <p className="owner-card__note">
+          Everything above, in the units the chain actually settled and checked against the mandate
+          the owner signed. This is what an accountant, an auditor or a judge reads.
+        </p>
+      </div>
 
       {/* Claim strip */}
       <section className="claim">
@@ -300,19 +270,7 @@ function Footer({ data }: { data: EventsResponse }) {
   );
 }
 
-function Header({
-  revoked,
-  agentId,
-  mode,
-  viewMode,
-  onModeChange,
-}: {
-  revoked: boolean;
-  agentId: string;
-  mode: 'observe' | 'trade' | null;
-  viewMode: Mode;
-  onModeChange: (m: Mode) => void;
-}) {
+function Header({ revoked, agentId, mode }: { revoked: boolean; agentId: string; mode: 'observe' | 'trade' | null }) {
   return (
     <header className="header">
       <span className="brand">
@@ -320,32 +278,11 @@ function Header({
         YIELD
       </span>
       <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* The chain-native chips are noise to an owner and provenance to a controller. */}
-        {viewMode === 'advanced' && (
-          <>
-            {agentId && <span className="chip">ERC-8004 agent #{agentId}</span>}
-            {mode && <span className={`chip ${mode === 'trade' ? 'chip--active' : ''}`}>{mode} mode</span>}
-          </>
-        )}
         <span className={`chip ${revoked ? 'chip--revoked' : 'chip--active'}`}>
-          {revoked ? (viewMode === 'owner' ? 'agent paused' : 'mandate revoked') : viewMode === 'owner' ? 'agent working' : 'mandate active'}
+          {revoked ? 'agent paused' : 'agent working'}
         </span>
-        <span className="mode-switch" role="group" aria-label="View">
-          <button
-            className={`mode-switch__btn ${viewMode === 'owner' ? 'mode-switch__btn--on' : ''}`}
-            onClick={() => onModeChange('owner')}
-            aria-pressed={viewMode === 'owner'}
-          >
-            My money
-          </button>
-          <button
-            className={`mode-switch__btn ${viewMode === 'advanced' ? 'mode-switch__btn--on' : ''}`}
-            onClick={() => onModeChange('advanced')}
-            aria-pressed={viewMode === 'advanced'}
-          >
-            The evidence
-          </button>
-        </span>
+        {agentId && <span className="chip">ERC-8004 agent #{agentId}</span>}
+        {mode && <span className={`chip ${mode === 'trade' ? 'chip--active' : ''}`}>{mode} mode</span>}
       </span>
     </header>
   );

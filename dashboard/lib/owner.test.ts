@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { EventLogRecord, ForecastResult } from '@yield/shared';
-import { agentActivity, allocation, coverage, dayMonth } from './owner.js';
+import { agentActivity, allocation, coverage, dayMonth, deployableUnder, whatIf } from './owner.js';
 import { DEMO_SCALE, eur, eurFrom, toEur } from './scale.js';
 
 const U = (n: number) => (BigInt(Math.round(n * 1_000_000)) ).toString();
@@ -135,6 +135,65 @@ test('scale: zero and empty are zero, never NaN on the front page', () => {
   assert.equal(toEur('0'), 0);
   assert.equal(toEur(''), 0);
   assert.equal(eurFrom(''), '€0');
+});
+
+// ── what-if ───────────────────────────────────────────────────────────────
+
+test('whatIf: a hire the business can absorb still leaves it covered', () => {
+  const f = forecast([['2026-07-29', 10], ['2026-08-15', 10], ['2026-08-28', 10]]);
+  const c = whatIf(f, U(5), BigInt(U(1))); // 1 USDC/month against 5 of headroom
+  assert.equal(c.coveredWholeHorizon, true);
+});
+
+test('whatIf: a hire it cannot absorb names the date the floor breaks', () => {
+  const f = forecast([['2026-07-29', 10], ['2026-08-15', 10], ['2026-08-28', 10]]);
+  const c = whatIf(f, U(5), BigInt(U(9))); // 9 USDC/month is far too much
+  assert.equal(c.coveredWholeHorizon, false);
+  assert.ok(c.tightest!.marginBaseUnits < 0n, 'the tightest point goes below the floor');
+});
+
+test('whatIf: the commitment accrues over time, it does not hit on day one', () => {
+  const f = forecast([['2026-07-29', 10], ['2026-08-28', 10]]);
+  const early = whatIf(f, U(5), BigInt(U(3)));
+  // Day 1 of a 3 USDC/month cost should barely bite; day 30 should take the full amount.
+  const points = early.tightest!;
+  assert.ok(points.date === '2026-08-28', 'the worst point is the far end, not the near one');
+});
+
+test('whatIf: new income (a negative commitment) improves coverage', () => {
+  const f = forecast([['2026-07-29', 6], ['2026-08-28', 4]]);
+  const worse = whatIf(f, U(5), 0n);
+  const better = whatIf(f, U(5), -BigInt(U(4)));
+  assert.ok(
+    better.tightest!.marginBaseUnits > worse.tightest!.marginBaseUnits,
+    'adding income must raise the tightest margin',
+  );
+});
+
+test('whatIf: no forecast yields no answer rather than a guess', () => {
+  assert.deepEqual(whatIf(null, U(5), 100n), { coveredThrough: null, coveredWholeHorizon: false, tightest: null });
+});
+
+// ── the brief ─────────────────────────────────────────────────────────────
+
+test('brief: appetite changes how much is committed, never the floor itself', () => {
+  const low = deployableUnder(U(10), U(5), null, 'conservative');
+  const mid = deployableUnder(U(10), U(5), null, 'balanced');
+  const high = deployableUnder(U(10), U(5), null, 'opportunistic');
+  assert.ok(low < mid && mid < high, 'appetite is monotonic');
+  // 5 USDC of headroom; even the most aggressive setting leaves the floor untouched.
+  assert.ok(high <= 5_000_000n, 'never commits more than the headroom above the floor');
+});
+
+test('brief: the projected low binds when it is above the floor', () => {
+  // Balance 10, floor 5, but the forecast says it dips to 8 — only 2 is truly spare.
+  const d = deployableUnder(U(10), U(5), BigInt(U(8)), 'opportunistic');
+  assert.ok(d <= 2_000_000n, 'guards against the projected low, not just the floor');
+});
+
+test('brief: a balance at or below the floor commits nothing, ever', () => {
+  assert.equal(deployableUnder(U(5), U(5), null, 'opportunistic'), 0n);
+  assert.equal(deployableUnder(U(3), U(5), null, 'opportunistic'), 0n);
 });
 
 test('dayMonth: renders a readable date and passes junk through', () => {

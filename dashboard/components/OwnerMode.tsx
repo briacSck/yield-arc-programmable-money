@@ -1,32 +1,60 @@
-import type { EventsResponse } from '../src/api-contract';
-import { agentActivity, allocation, coverage, dayMonth } from '../lib/owner';
-import { DEMO_CLIENT, eurFrom } from '../lib/scale';
-import { when } from '../lib/format';
+'use client';
+
+import { useMemo, useState } from 'react';
+import type { ForecastResult } from '@yield/shared';
+import type { EventsResponse, MoveVerdictDto } from '../src/api-contract';
+import {
+  agentActivity,
+  allocation,
+  coverage,
+  dayMonth,
+  deployableUnder,
+  whatIf,
+  type AgentAction,
+  type YieldAppetite,
+} from '../lib/owner';
+import { DEMO_CLIENT, DEMO_SCALE, eur, eurFrom, toEur } from '../lib/scale';
+import { ARCSCAN, shortHash, usdc, when } from '../lib/format';
 
 /**
- * Owner mode — the screen for the person whose money this is.
+ * The owner's screen — one screen, not a mode.
  *
- * She has never heard of a mandate, a receipt hash or an invariant, and she should not need to.
- * The questions, in the order she asks them: do I make payroll · what is my cash doing · what did
- * my agent do · can I stop it.
+ * A CEO does not "pause" his CFO. He gives him a brief and constraints, and the CFO turns that into
+ * a plan and executes it. So the surface is: the answer, the brief that shapes it, the question an
+ * owner actually asks ("can I afford this?"), and what the agent did — where every line drills, in
+ * place, down to the hash and the transaction that prove it.
  *
- * Everything here is DERIVED (see lib/owner.ts). Nothing is authored per event. Where a fact is not
- * available — earned-to-date, until the venue is wired — the screen says so rather than inventing a
- * number. On a product whose whole proposition is that its claims are checkable, a placeholder that
- * looks like data is the one unaffordable bug.
+ * Progressive disclosure, not a toggle: an accountant does not want a different screen, they want
+ * the same number with its provenance attached.
  */
-export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onShowAdvanced: () => void }) {
-  const { mandate, events, latestForecast } = data;
+export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; onJumpToEvidence: () => void }) {
+  const { mandate, events, latestForecast, audit } = data;
   const forecast = latestForecast?.forecast ?? null;
-  const cover = coverage(forecast, mandate?.floorUsdc ?? null);
-  const alloc = mandate
-    ? allocation(mandate.companyBalanceUsdc, mandate.deployedUsdc, mandate.floorUsdc)
-    : null;
-  const actions = agentActivity(events);
   const revoked = mandate?.revoked ?? false;
+
+  // The brief is local until applied: moving a slider must never move money.
+  const [floorEur, setFloorEur] = useState<number | null>(null);
+  const [appetite, setAppetite] = useState<YieldAppetite>('balanced');
+
+  const mandateFloorEur = mandate ? Math.round(toEur(mandate.floorUsdc)) : 0;
+  const effectiveFloorEur = floorEur ?? mandateFloorEur;
+  const effectiveFloorUnits = String(Math.round((effectiveFloorEur / DEMO_SCALE) * 1_000_000));
+  const briefDirty = floorEur !== null && floorEur !== mandateFloorEur;
+
+  const cover = useMemo(() => coverage(forecast, effectiveFloorUnits), [forecast, effectiveFloorUnits]);
+  const alloc = mandate ? allocation(mandate.companyBalanceUsdc, mandate.deployedUsdc, effectiveFloorUnits) : null;
+  const actions = agentActivity(events);
+
+  const projectedLow = cover.tightest
+    ? BigInt(effectiveFloorUnits) + cover.tightest.marginBaseUnits
+    : null;
+  const wouldDeploy = mandate
+    ? deployableUnder(mandate.companyBalanceUsdc, effectiveFloorUnits, projectedLow, appetite)
+    : 0n;
 
   return (
     <>
+      {/* ── The answer ────────────────────────────────────────────────── */}
       <section className="owner-hero">
         <div>
           <div className="eyebrow">
@@ -38,8 +66,6 @@ export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onSh
           <h1 className="owner-answer">
             {revoked ? (
               <>Your agent is paused.</>
-            ) : cover.coveredWholeHorizon && cover.coveredThrough ? (
-              <>You&apos;re covered through {dayMonth(cover.coveredThrough)}.</>
             ) : cover.coveredThrough ? (
               <>You&apos;re covered through {dayMonth(cover.coveredThrough)}.</>
             ) : (
@@ -50,8 +76,8 @@ export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onSh
           <p className="owner-sub">
             {revoked ? (
               <>
-                You paused it, so it will not move any money. Anything already working for you can
-                still come back to your account. Restart it whenever you like.
+                It will not move any money. Anything already working for you can still come back to
+                your account. Restart it whenever you like.
               </>
             ) : cover.tightest && cover.tightest.marginBaseUnits >= 0n ? (
               <>
@@ -61,7 +87,7 @@ export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onSh
               </>
             ) : cover.tightest ? (
               <>
-                Careful: around {dayMonth(cover.tightest.date)} your cash could dip{' '}
+                Around {dayMonth(cover.tightest.date)} your cash could dip{' '}
                 <strong>{eurFrom(-cover.tightest.marginBaseUnits)}</strong> below your safety floor.
                 Your agent is holding money back rather than putting it to work.
               </>
@@ -73,12 +99,7 @@ export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onSh
 
         <div className="owner-total">
           <div className="label">Total cash</div>
-          <div className="owner-total__num">
-            {alloc ? eurFrom(alloc.total) : '—'}
-          </div>
-          {/* Earned-to-date is deliberately absent until the venue actually earns. See §6 of the
-              product plan: `deployed` is an accounting entry today, so any number here would be a
-              claim we cannot back. */}
+          <div className="owner-total__num">{alloc ? eurFrom(alloc.total) : '—'}</div>
           <div className="owner-total__note">
             {alloc && alloc.working > 0n
               ? `${eurFrom(alloc.working)} of it is working for you`
@@ -93,90 +114,255 @@ export function OwnerMode({ data, onShowAdvanced }: { data: EventsResponse; onSh
         </section>
       )}
 
-      <section className="owner-cards">
-        <div className="card owner-card">
-          <div className="label">Your account</div>
-          <div className="owner-card__num">{alloc ? eurFrom(alloc.inAccount) : '—'}</div>
-          <div className="owner-card__note">
-            {alloc ? (
-              <>
-                of which <strong>{eurFrom(alloc.reserved)}</strong> is your safety floor — your agent
-                can never go below it
-              </>
-            ) : (
-              'balance unavailable'
-            )}
-          </div>
+      {/* ── The brief: what the owner tells the agent ─────────────────── */}
+      <section className="card owner-brief">
+        <div className="section__head">
+          <h2>Your brief</h2>
+          <span className="eyebrow">what you tell your agent — it does the rest</span>
         </div>
 
-        <div className="card-ink owner-card">
-          <div className="label owner-card__label-ink">Working for you</div>
-          <div className="owner-card__num">{alloc ? eurFrom(alloc.working) : '—'}</div>
-          <div className="owner-card__note owner-card__note-ink">
-            Short-term US Treasury fund (USYC), settled on Arc.{' '}
-            {alloc && alloc.spare > 0n
-              ? `${eurFrom(alloc.spare)} more could be put to work.`
-              : 'Nothing spare to put to work today.'}
+        <div className="brief-grid">
+          <div>
+            <label className="label" htmlFor="floor">Never go below</label>
+            <div className="brief-floor">
+              <input
+                id="floor"
+                type="range"
+                min={Math.max(1000, Math.round(mandateFloorEur * 0.2))}
+                max={Math.round(mandateFloorEur * 2.5) || 50000}
+                step={500}
+                value={effectiveFloorEur}
+                onChange={(e) => setFloorEur(Number(e.target.value))}
+              />
+              <div className="brief-floor__num">{eur(effectiveFloorEur)}</div>
+            </div>
+            <p className="owner-card__note">
+              The hard limit your agent can never cross. Enforced by the contract itself, not by us.
+            </p>
+          </div>
+
+          <div>
+            <span className="label">How hard should it work your cash?</span>
+            <div className="appetite">
+              {(['conservative', 'balanced', 'opportunistic'] as const).map((a) => (
+                <button
+                  key={a}
+                  className={`appetite__btn ${appetite === a ? 'appetite__btn--on' : ''}`}
+                  onClick={() => setAppetite(a)}
+                  aria-pressed={appetite === a}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+            <p className="owner-card__note">
+              A preference, never a licence: this can only make your agent more cautious than your
+              floor already requires.
+            </p>
+          </div>
+
+          <div className="brief-outcome">
+            <div className="label">Under this brief, right now</div>
+            <div className="brief-outcome__num">{eurFrom(wouldDeploy)}</div>
+            <div className="owner-card__note">
+              would be put to work, keeping {eur(effectiveFloorEur)} untouchable and respecting the
+              worst case your forecast allows for.
+            </div>
+            {briefDirty && (
+              <div className="brief-apply">
+                <button className="btn btn--primary" disabled title="Sign-in required">
+                  Apply — set my floor to {eur(effectiveFloorEur)}
+                </button>
+                <button className="linklike" onClick={() => setFloorEur(null)}>
+                  reset
+                </button>
+                <div className="owner-controls__note">
+                  Previewing only. Applying writes a real transaction to your mandate on-chain.
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
+      {/* ── The question an owner actually asks ───────────────────────── */}
+      <WhatIf forecast={forecast} floorUnits={effectiveFloorUnits} />
+
+      {/* ── What the agent did, drillable in place ────────────────────── */}
       <section className="owner-activity">
-        <h2 className="section-title">What your agent did</h2>
+        <div className="section__head">
+          <h2>What your agent did</h2>
+          <span className="eyebrow">click any line for the proof</span>
+        </div>
         {actions.length === 0 ? (
           <p className="owner-empty">
-            Nothing needed doing yet. Your agent checks your position every cycle and only moves money
-            when it changes what you can safely set aside.
+            Nothing needed doing yet. Your agent checks your position every cycle and only moves
+            money when it changes what you can safely set aside.
           </p>
         ) : (
           <ul className="owner-actions">
             {actions.map((a) => (
-              <li key={a.seq} className="owner-action">
-                <div className="owner-action__head">
-                  <span className="owner-action__what">{a.headline}</span>
-                  <span className="owner-action__amt">{eurFrom(a.amountBaseUnits)}</span>
-                </div>
-                <div className="owner-action__meta">{when(a.at)}</div>
-                <div className="owner-action__why">{a.reason}</div>
-              </li>
+              <ActivityRow
+                key={a.seq}
+                action={a}
+                verdict={a.txHash ? audit?.verdictsByTxHash[a.txHash.toLowerCase()] ?? null : null}
+              />
             ))}
           </ul>
         )}
       </section>
 
+      {/* ── Controls ──────────────────────────────────────────────────── */}
       <section className="owner-controls card">
         <div>
-          <div className="label">Your safety floor</div>
-          <div className="owner-controls__floor">{mandate ? eurFrom(mandate.floorUsdc) : '—'}</div>
+          <div className="label">You are always in control</div>
+          <div className="owner-controls__floor">{revoked ? 'Paused' : 'Working'}</div>
           <div className="owner-card__note">
-            Your agent can never take your account below this. You set it, and only you can change it.
+            Stopping is free and instant. Anything already working for you can still come home — your
+            agent can never block that, even while paused.
           </div>
         </div>
         <div className="owner-controls__actions">
-          <button className="btn" disabled title="Available once sign-in is enabled">
-            Adjust my floor
-          </button>
-          <button className="btn" disabled title="Available once sign-in is enabled">
+          <button className="btn" disabled title="Sign-in required">
             {revoked ? 'Restart my agent' : 'Pause my agent'}
           </button>
           <div className="owner-controls__note">
-            Sign-in required — these run as real on-chain transactions from your wallet.
+            Sign-in required — this runs as a real on-chain transaction from your wallet.
           </div>
         </div>
       </section>
 
       <p className="owner-trust">
-        Every move your agent makes is recorded publicly and can be checked by anyone — including
-        your accountant.{' '}
-        <button className="linklike" onClick={onShowAdvanced}>
-          See the evidence →
+        Every move your agent makes is recorded publicly and can be checked by anyone, including your
+        accountant.{' '}
+        <button className="linklike" onClick={onJumpToEvidence}>
+          See the full record →
         </button>
       </p>
     </>
   );
 }
 
-/** Where the money sits, as one bar. Reserved is a slice OF the account, not additional to it. */
+/** "Can I afford this?" — the question no SME tool answers with a plan behind it. */
+function WhatIf({ forecast, floorUnits }: { forecast: ForecastResult | null; floorUnits: string }) {
+  const [monthlyEur, setMonthlyEur] = useState(0);
+  const monthlyUnits = BigInt(Math.round((monthlyEur / DEMO_SCALE) * 1_000_000));
+  const result = useMemo(() => whatIf(forecast, floorUnits, monthlyUnits), [forecast, floorUnits, monthlyUnits]);
+  const presets = [1500, 3000, 5000];
+
+  return (
+    <section className="card owner-whatif">
+      <div className="section__head">
+        <h2>Can I afford it?</h2>
+        <span className="eyebrow">a new hire, a machine, a rent increase</span>
+      </div>
+      <div className="whatif-controls">
+        {presets.map((p) => (
+          <button
+            key={p}
+            className={`appetite__btn ${monthlyEur === p ? 'appetite__btn--on' : ''}`}
+            onClick={() => setMonthlyEur(monthlyEur === p ? 0 : p)}
+          >
+            {eur(p)}/month
+          </button>
+        ))}
+        {monthlyEur > 0 && (
+          <button className="linklike" onClick={() => setMonthlyEur(0)}>
+            clear
+          </button>
+        )}
+      </div>
+      <p className="whatif-answer">
+        {monthlyEur === 0 ? (
+          <span className="owner-card__note">
+            Pick a commitment and your agent will tell you what it does to your runway — using the
+            same forecast it makes its own decisions on.
+          </span>
+        ) : result.coveredWholeHorizon ? (
+          <>
+            <strong>Yes.</strong> Taking on {eur(monthlyEur)}/month, you stay above your safety floor
+            for the whole forecast
+            {result.tightest ? (
+              <> — with {eurFrom(result.tightest.marginBaseUnits)} to spare at the tightest point.</>
+            ) : (
+              '.'
+            )}
+          </>
+        ) : result.tightest ? (
+          <>
+            <strong>Not yet.</strong> At {eur(monthlyEur)}/month you&apos;d go{' '}
+            {eurFrom(-result.tightest.marginBaseUnits)} below your safety floor around{' '}
+            {dayMonth(result.tightest.date)}
+            {result.coveredThrough ? <> — you&apos;re fine until {dayMonth(result.coveredThrough)}.</> : '.'}
+          </>
+        ) : (
+          <span className="owner-card__note">Not enough forecast to answer that yet.</span>
+        )}
+      </p>
+    </section>
+  );
+}
+
+/**
+ * One thing the agent did. Collapsed it is a sentence a baker reads; expanded it is the decision
+ * record, the committed forecast hash, the machine verdict and the transaction. Same object, two
+ * depths — which is the whole argument of this product in one interaction.
+ */
+function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVerdictDto | null }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li className={`owner-action ${open ? 'owner-action--open' : ''}`}>
+      <button className="owner-action__trigger" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="owner-action__head">
+          <span className="owner-action__what">
+            <span className="owner-action__caret">{open ? '▾' : '▸'}</span> {action.headline}
+          </span>
+          <span className="owner-action__amt">{eurFrom(action.amountBaseUnits)}</span>
+        </span>
+        <span className="owner-action__meta">{when(action.at)}</span>
+      </button>
+
+      {open && (
+        <div className="drill">
+          <p className="drill__reason">{action.reason}</p>
+          <dl className="drill__facts">
+            <dt>On-chain amount</dt>
+            <dd>{usdc(action.amountBaseUnits)}</dd>
+            <dt>Action</dt>
+            <dd>{action.kind}</dd>
+            {action.txHash && (
+              <>
+                <dt>Transaction</dt>
+                <dd>
+                  <a href={`${ARCSCAN}/tx/${action.txHash}`} target="_blank" rel="noreferrer">
+                    {shortHash(action.txHash)} ↗
+                  </a>
+                </dd>
+              </>
+            )}
+            <dt>Checked against the mandate</dt>
+            <dd>
+              {verdict ? (
+                Object.entries(verdict.perInvariant).map(([k, v]) => (
+                  <span key={k} className={`drill__chip ${v === 'PASS' ? 'drill__chip--pass' : 'drill__chip--flag'}`}>
+                    {k} {v}
+                  </span>
+                ))
+              ) : (
+                <span className="owner-card__note">awaiting the next nightly audit</span>
+              )}
+            </dd>
+          </dl>
+          <p className="drill__verify">
+            Check it yourself, against the chain, not against us:{' '}
+            <code>npx -y @yield-cfo/mandate-verify</code>
+          </p>
+        </div>
+      )}
+    </li>
+  );
+}
+
 function AllocationBar({ alloc }: { alloc: ReturnType<typeof allocation> }) {
   const total = Number(alloc.total);
   const pct = (v: bigint) => (total === 0 ? 0 : (Number(v) / total) * 100);
