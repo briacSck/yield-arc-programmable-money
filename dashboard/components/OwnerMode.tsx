@@ -199,8 +199,8 @@ export function OwnerMode({
           <div className="owner-total__num">{alloc ? eurFrom(alloc.total) : '—'}</div>
           <div className="owner-total__note">
             {alloc && alloc.working > 0n
-              ? `${eurFrom(alloc.working)} of it is working for you`
-              : 'none of it is working for you right now'}
+              ? `${eurFrom(alloc.working)} of it is set aside with your agent`
+              : 'none of it is set aside right now'}
           </div>
         </div>
       </section>
@@ -254,7 +254,7 @@ export function OwnerMode({
             </div>
             <p className="owner-card__note">
               A preference, never a licence: this can only make your agent more cautious than your
-              floor already requires.
+              floor already requires. (Preview — this setting is not yet sent to your agent.)
             </p>
           </div>
 
@@ -565,7 +565,9 @@ function AllocationBar({ alloc }: { alloc: ReturnType<typeof allocation> }) {
     { key: 'reserved', label: 'Safety floor', value: alloc.reserved, cls: 'seg--reserved' },
     { key: 'held', label: 'Held for what’s coming', value: alloc.heldForForecast, cls: 'seg--held' },
     { key: 'spare', label: 'Spare', value: alloc.spare, cls: 'seg--spare' },
-    { key: 'working', label: 'Working', value: alloc.working, cls: 'seg--working' },
+    // "Set aside", not "working": until the yield venue is wired (v2 awaits its allowlist role),
+    // this pool is escrowed and earns nothing. The word must not claim what the money does not do.
+    { key: 'working', label: 'Set aside', value: alloc.working, cls: 'seg--working' },
   ];
   return (
     <>

@@ -1,3 +1,9 @@
+> ⚠️ **SUPERSEDED by `PLAN-product-v2.md` (2026-07-28).** Two things here were later overturned:
+> the owner/advanced **mode toggle** (built, then replaced by progressive disclosure on one screen —
+> a toggle shows a reader two products when the argument is one object at two depths), and the
+> pause-centric control model (replaced by the brief + what-if + approvals framing under the
+> *gestion sous mandat* thesis). Kept for the decision trail.
+
 # PLAN — the product: a CFO app for a business owner who doesn't know what a blockchain is
 
 _Draft 2026-07-28. Supersedes `PLAN-judge-surface.md`, which solved the wrong problem: it treated

@@ -2,7 +2,9 @@
 
 An autonomous treasury agent that holds its own [Circle Wallet](https://www.circle.com/) on
 [Arc](https://arc.network), **forecasts a company's cash position** (P10/P50/P90 over 30/60/90
-days), and on its own keeps a safe operating floor while deploying surplus USDC into yield —
+days), and on its own keeps a safe operating floor while sweeping surplus USDC into a
+mandate-enforced escrow — the venue-aware v2 mandate that makes that pool actually earn (USYC) is
+deployed and awaiting its allowlist role, and we don't claim yield until it does —
 pulling funds back *before* projected shortfalls, settling sub-second in USDC, every action
 signed under a **verifiable on-chain agent identity (ERC-8004)**.
 

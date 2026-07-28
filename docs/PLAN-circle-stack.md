@@ -1,3 +1,11 @@
+> ⚠️ **STATUS 2026-07-28 — partially overruled on review.** The StableFX/EURC "Tier 1 promotion"
+> below was judged ~60% rationalisation (the exposure is on 100% of the cash, not the floor; a
+> EUR-denominated floor over a USDC balance would destroy pure-chain verifiability; the honest fix
+> is same-unit EURC-to-EURC, see `PLAN-product-v2.md` §3 and `ERC-DRAFT.md` v0.2). The Paymaster
+> section re-litigated a decision PLAN §5 had already settled ("never say Paymaster") — **cut**.
+> The USYC section stands, and v2 is now deployed (`0xd41d…2f70`). The Nanopayments-premium beat
+> remains the one earned track item. Read this file as the *analysis trail*, not the decisions.
+
 # Are we using the Circle stack at full capacity — or namedropping?
 
 _2026-07-28. Test applied to every product below: **does a French SME's CFO agent genuinely need

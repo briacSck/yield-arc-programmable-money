@@ -17,7 +17,13 @@ Deferred work, captured by /autoplan run 3 (2026-07-14). Items here are consciou
 - [x] **Heartbeat alert VERIFIED end-to-end** (2026-07-23) — `HEARTBEAT_URL` is set on the worker (hc-ping.com); a controlled `/fail` ping fired the alert channel, confirmed received. The failStorm ping (3 consecutive FAILED → `/fail`) is deployed + unit-tested. The process-up-but-all-failing state now pages.
 
 ## USYC venue (§17.4) — REAL, round-trip proven 2026-07-23
-- [x] **Allowlist confirmed + round-trip executed on-chain**: subscribe 1 USDC → 0.883398 USYC (deposit `0x46b1dba7…`), redeem → 0.999903 USDC (`0xfd6e3a65…`). Kit: `agent/scripts/usyc-mint-test.ts`.
+- [x] **Round-trip executed on-chain**: subscribe 1 USDC → 0.883398 USYC (deposit `0x46b1dba7…`), redeem → 0.999903 USDC (`0xfd6e3a65…`). Kit: `agent/scripts/usyc-mint-test.ts`.
+  - ⚠️ **Evidence correction (2026-07-28):** the original "allowlist confirmed" read
+    (`subscriptionLimitRemaining > 0 || maxDeposit > 0`) was a **false positive for every address
+    on the chain** — the Teller hands the same 1,000,000/day limit to anyone, including
+    `0x…deadbeef`. The real check is `RolesAuthority.canCall(addr, Teller, 0x6e553f65)`
+    (`agent/scripts/check-usyc-permission.ts`). The conclusion held — the agent EOA *is*
+    permitted — but by luck, not method. The round-trip itself is the actual proof.
 - [x] **Venue adapter** `agent/src/chain/usyc-venue.ts` (`IVenue` seam: read-only previews/allowlist + money-move call specs the executor signs; 6 tests + live smoke).
 - [ ] **Wire USYC as the mandate's deploy target** — GATED, and **option (a) is now ruled out on inspection (2026-07-27)**. The proposed "executor-level paired move (mandate.deposit + USYCVenue.mintCall)" cannot work against the frozen contract: `AgentMandate.deposit()` only moves numbers between `companyBalance` and `deployedBalance`, and the native USDC backing both pools is **held by the mandate contract itself** (funded via `payable fundCompany`). It makes no external calls and has no path to send funds to the Teller; the only exit is `emergencyWithdrawAll` → owner. So the agent wallet cannot subscribe USYC *with the deployed funds* — it could only subscribe with its own gas-wallet USDC, which would make "the deployed surplus is earning T-bill yield" **false on-chain**. That is exactly what invariant #3 forbids. Remaining options:
   - **(1) Keep the disclosed stub for the demo [RECOMMENDED].** The mandate tracks `deployedBalance`; the proven USYC round-trip stands alone as a DeFi-track beat. Zero new Solidity, live track record and the verifier's pinned deploy block untouched. Venue re-verified live 2026-07-27: allowlisted, 1,000,000 USDC/day subscription limit remaining.

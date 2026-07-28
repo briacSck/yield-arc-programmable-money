@@ -1,4 +1,9 @@
 <!-- /autoplan restore point: ~/.gstack/projects/briacSck-yield-arc-programmable-money/main-autoplan-restore-20260728-084642.md -->
+> ⚠️ **SUPERSEDED — this plan solved the wrong problem.** It treated the dashboard as a judge
+> artifact; the founder's correction (2026-07-28): **the dashboard is the product** — the app a
+> non-crypto business owner uses. See `PLAN-product-v2.md` and `THESIS.md`. The /autoplan review
+> appended below remains valid as findings (several of its bugs were real and are fixed on `main`).
+
 # PLAN — the judge surface: make YIELD self-explanatory (autoporteur)
 
 _Draft 2026-07-28, for review. Scope: everything a judge or a curious user meets **without us in the

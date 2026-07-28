@@ -199,7 +199,9 @@ export default function Page() {
               <dl>
                 <dt>Company pool</dt>
                 <dd>{usdc(mandate.companyBalanceUsdc)}</dd>
-                <dt>Deployed in yield</dt>
+                {/* "Set aside", not "in yield": v1 escrows this pool, it does not earn. The
+                    venue-aware v2 (0xd41d…2f70) is deployed and awaits its USYC allowlist role. */}
+                <dt>Set aside (escrow)</dt>
                 <dd>{usdc(mandate.deployedUsdc)}</dd>
                 <dt>Safe floor (hard)</dt>
                 <dd>{usdc(mandate.floorUsdc)}</dd>

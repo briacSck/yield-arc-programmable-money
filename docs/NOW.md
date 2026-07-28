@@ -4,7 +4,36 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-27 (W3 day 1 — everything merged; exposure floor + scenario driver shipped; CI test-skip bug found)_
+_Last updated: 2026-07-28 PM (the endgame day — product live, owner controls live, v2 deployed)_
+
+## 2026-07-28 — endgame day (PRs #11–#16, all merged; `main` green; 243 tests)
+
+- **The dashboard is the product now.** One screen: the owner's answer ("You're covered through
+  27 August"), the brief (floor slider + appetite), "Can I afford it?" what-ifs, agent activity
+  drilling in place to hash → verdict → arcscan, and the full machine-checked record below. LIVE.
+- **Owner controls are LIVE end-to-end** behind a passphrase gate: Pause/Restart + Adjust-floor →
+  `/api/owner` → worker → **company** Circle wallet → `revoke`/`reinstate`/`setMandate`. A
+  **critical hole was found by independent review before it went live**: the proxy attached the
+  worker secret for ANY caller, so a bare `curl` could have paused the live agent, and a
+  `999999999999999999` floor passed validation (agent dead forever, verifier still COMPLIANT).
+  Fixed: `OWNER_UI_PASSPHRASE` (constant-time, fails closed) + floor clamped to 2× total liquidity.
+  The attack was re-run against production post-fix: **401, nothing sent**.
+- **AgentMandateV2 (venue-aware) is DEPLOYED**: `0xd41d3648c71641fb2801415726787d5728492f70`,
+  block 54088009, funded 2 USDC, **alongside** v1 (whose history is untouched). The unchanged
+  verifier verifies it: COMPLIANT 0×5. Venue is unset → escrow-only (= v1) until Circle grants the
+  contract its USYC allowlist role — support email ready in `docs/ACTIONS-FOR-BRIAC.md`.
+  Evidence correction en route: the old "allowlist confirmed" read was a false positive for every
+  address; real check = `RolesAuthority.canCall` (`agent/scripts/check-usyc-permission.ts`).
+- **`judge-command` CI**: the printed verify commands now run in CI **from an empty temp dir** —
+  the 404-npm / missing-npm-install / stale-dist class (3 occurrences) cannot recur.
+- **Honesty pass**: "working for you"/"Deployed in yield" vocabulary corrected to "set aside" —
+  v1's escrow earns nothing and the screen no longer implies it does. Appetite labelled preview.
+- **Worker redeployed** (first container attempt crashed, Railway restarted; cycles continuous, no
+  state loss). npm publish still blocked on auth → token route in `ACTIONS-FOR-BRIAC.md`.
+- **New docs**: `THESIS.md` (positioning + the six pushes — deck/video/README draw from it),
+  `ACTIONS-FOR-BRIAC.md` (USYC support email with the v2 address, npm token route, license call).
+
+_Previous: 2026-07-27 (W3 day 1 — everything merged; exposure floor + scenario driver shipped; CI test-skip bug found)_
 
 ## W3 day 1 — two core lanes shipped
 
