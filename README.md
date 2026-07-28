@@ -1,16 +1,38 @@
-# YIELD — Agentic CFO on Arc
+# YIELD — the agentic CFO for the real economy
 
-An autonomous treasury agent that holds its own [Circle Wallet](https://www.circle.com/) on
-[Arc](https://arc.network), **forecasts a company's cash position** (P10/P50/P90 over 30/60/90
-days), and on its own keeps a safe operating floor while sweeping surplus USDC into a
-mandate-enforced escrow — the venue-aware v2 mandate that makes that pool actually earn (USYC) is
-deployed and awaiting its allowlist role, and we don't claim yield until it does —
-pulling funds back *before* projected shortfalls, settling sub-second in USDC, every action
-signed under a **verifiable on-chain agent identity (ERC-8004)**.
+In France and Europe, **poor financial management is the number one cause of company failure** —
+not bad products, not weak demand. A small business owner is a baker, a builder, a designer; they
+are not a CFO and cannot afford one. YIELD is the CFO they hire anyway: it forecasts the cash,
+keeps a safety floor the owner sets, puts the surplus to work, pulls it back before payroll, and
+answers the question owners actually ask — *"can I afford this hire?"* — from the same model that
+moves the money.
 
-> A CFO that never sleeps, for the real economy, built agent-native on Arc.
+**This repo is that product on its most advanced rails.** The same CFO brain our paying customers
+use today over offchain rails (open banking, tokenised money-market funds, <24 h exits) runs here
+on [Arc](https://arc.network): settlement in seconds, bounds enforced by a contract instead of a
+promise, and a public record anyone can re-check. One brain, two rails — onchain is a migration,
+not a pivot.
 
-**🟢 LIVE — trading autonomously on Arc testnet since July 14, 2026, no human in the loop.**
+## The business behind the demo
+
+- **A paying customer today, at €50/month** (one — we don't round up), and capital committed
+  through the tool.
+- **A signed pilot with Akoneo, 4 LOIs, interest from Fiteco** (an accounting network of roughly
+  70,000 client companies) — accountants are the channel, because they hold the client
+  relationship and they sell prudence.
+- **An AMF authorisation track underway: CIF, then PSI/SGP with *gestion sous mandat*** —
+  discretionary management under mandate, the regulated French instrument for exactly what the
+  on-chain `AgentMandate` implements. The licence and the contract are the same object expressed
+  twice; the verifier below is how a three-person company earns institutional trust with
+  mathematics instead of a balance sheet.
+
+## The demo, live
+
+**🟢 Unattended on Arc testnet since July 14, 2026.** Honest version: for 8 of those days
+(Jul 15–23) an RPC outage degraded the agent's data feed — and it **held**, every cycle, rather
+than move money on inputs it couldn't trust. That is invariant #4 working, not the record's
+asterisk. We found it, removed the single point of failure, and verified end-to-end that the
+alert which would have caught it now fires.
 
 [![nightly audit](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml/badge.svg)](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml)
 <!-- The npm badge is intentionally absent until the package is published: it resolves against a
@@ -70,16 +92,20 @@ solvency.** Any degraded input → `HOLD`. All money movement goes through one `
 | `scenario/` | seeded-ledger generator + simulated-clock demo driver |
 | `dashboard/` | **the product**: the owner's screen (the answer, the brief, "can I afford it?", what the agent did) with the full machine-checked record on the same page — every line drills in place to its hash and transaction. Next.js, on Railway |
 | `verifier/` | judge-runnable invariant verifier (`@yield-cfo/mandate-verify`) — two-layer (fetch → **pure, zero-I/O replay core**), machine-checks the 5 mandate invariants over full live history in one command. 20 tests including compliant-adversarial fixtures a naive verifier would wrongly flag, plus a golden test against real testnet history |
-| `underwriter/` | *(W3)* Claude Managed Agent that prices insurance for the CFO from its on-chain mandate + verified history — disclosed stub premium, daily certificate output |
+| `underwriter/` | an **independent** Claude Managed Agent that prices insurance on the CFO agent from its on-chain mandate + verified history — read-only by construction (no keys, no transactions), disclosed `stub-v0` premium. **6 scheduled runs completed; the daily schedule is currently archived and it runs on demand** — the history and memory store carry over if rescheduled. Why this matters beyond a demo: the market for insuring AI judgment is real — Lloyd's now backs an AI-liability policy (Armilla) and AIUC-1 is a certification standard for agentic AI — and **nobody applies any of it to onchain treasury agents**. Bounded ⇒ insurable ⇒ scalable; the certificate is also what lets an accountant put their signature next to the recommendation |
 
 ## Status
 
 Encode Club "Programmable Money Hackathon" (Arc / Circle), Agentic Economy + DeFi tracks.
 **Deployed and autonomous since Jul 14**: two Railway services (worker loop + dashboard),
-heartbeat-monitored, trade mode at live mandate caps. The decision engine, mandate contract,
-identity registration, baseline forecast, and dashboard shipped in days 1–2; current work is the
-verifier + audit surface. Build invariants for humans and AI agents: `AGENTS.md`; live state and
-current targets: `docs/NOW.md`; deferred items: `TODOS.md`.
+heartbeat-monitored, trade mode at live mandate caps. Shipped since: the product screen (the
+owner's brief, "can I afford it?", proof-in-place drill-downs), working owner controls signed by
+the company's Circle wallet behind a passphrase gate, the verifier + nightly audit, and the
+venue-aware `AgentMandateV2`
+([`0xd41d…2f70`](https://testnet.arcscan.app/address/0xd41d3648c71641fb2801415726787d5728492f70),
+deployed alongside v1, escrow-only until its USYC allowlist role is granted). Positioning and
+where this goes: `docs/THESIS.md`. Build invariants for humans and AI agents: `AGENTS.md`; live
+state: `docs/NOW.md`; deferred items: `TODOS.md`.
 
 ## Check it yourself — four rungs, offline first
 
