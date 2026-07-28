@@ -441,3 +441,92 @@ button:focus-visible {
     transition: none !important;
   }
 }
+
+/* ─── Owner mode — the product screen ─────────────────────────────────────
+   The person reading this owns the money and does not know what a mandate is.
+   Big honest numbers, plain sentences, no hashes. Advanced mode keeps the instrument. */
+
+.mode-switch { display: inline-flex; gap: 0; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.mode-switch__btn {
+  font: inherit; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 6px 14px; background: transparent; border: 0; color: var(--mute); cursor: pointer;
+}
+.mode-switch__btn--on { background: var(--ink); color: var(--paper); }
+
+.owner-hero {
+  display: grid; grid-template-columns: 1.15fr 1fr; gap: 56px; align-items: end;
+  padding: 40px 0 34px; border-bottom: 1px solid var(--line);
+}
+.owner-modelled {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mute-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 7px; margin-left: 4px;
+}
+.owner-answer {
+  font-size: clamp(30px, 4.6vw, 46px); line-height: 1.06; letter-spacing: -0.03em;
+  font-weight: 500; margin: 14px 0 12px;
+}
+.owner-sub { color: var(--ink-2); line-height: 1.55; max-width: 46ch; font-size: 15px; }
+.owner-sub strong { font-weight: 600; }
+.owner-total { text-align: right; }
+.owner-total__num {
+  font-family: var(--mono, 'Geist Mono', monospace);
+  font-size: clamp(44px, 6.4vw, 76px); line-height: 0.92; letter-spacing: -0.045em; font-weight: 300;
+}
+.owner-total__note { color: var(--mute); font-size: 13px; margin-top: 10px; }
+
+.owner-alloc { padding: 26px 24px; margin: 26px 0; }
+.allocbar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--line-2); }
+.allocbar__seg { height: 100%; }
+.seg--reserved { background: var(--mute-2); }
+.seg--spare    { background: var(--accent-bg); }
+.seg--working  { background: var(--accent); }
+.alloclegend { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 16px; font-size: 13px; color: var(--mute); }
+.alloclegend__item { display: inline-flex; align-items: center; gap: 8px; }
+.alloclegend__item strong { color: var(--ink); font-weight: 600; }
+.alloclegend__dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.owner-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 30px; }
+.owner-card { padding: 26px 24px; }
+.card-ink { background: var(--ink); color: var(--paper); border-radius: 10px; }
+.owner-card__label-ink { color: rgba(255,255,255,0.55); }
+.owner-card__num {
+  font-family: var(--mono, 'Geist Mono', monospace);
+  font-size: 38px; font-weight: 300; letter-spacing: -0.035em; margin: 10px 0 8px;
+}
+.owner-card__note { color: var(--mute); font-size: 13px; line-height: 1.5; }
+.owner-card__note-ink { color: rgba(255,255,255,0.6); }
+.owner-card__note strong { color: var(--ink); font-weight: 600; }
+
+.owner-activity { margin-bottom: 30px; }
+.owner-actions { list-style: none; padding: 0; margin: 0; }
+.owner-action { padding: 16px 0; border-bottom: 1px solid var(--line-2); }
+.owner-action__head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.owner-action__what { font-weight: 500; }
+.owner-action__amt { font-family: var(--mono, 'Geist Mono', monospace); font-weight: 500; }
+.owner-action__meta { color: var(--mute-2); font-size: 11px; letter-spacing: 0.04em; margin-top: 3px; }
+.owner-action__why { color: var(--mute); font-size: 13px; margin-top: 6px; line-height: 1.5; }
+.owner-empty { color: var(--mute); font-size: 14px; line-height: 1.6; max-width: 60ch; }
+
+.owner-controls { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; padding: 26px 24px; }
+.owner-controls__floor {
+  font-family: var(--mono, 'Geist Mono', monospace);
+  font-size: 32px; font-weight: 300; letter-spacing: -0.03em; margin: 8px 0;
+}
+.owner-controls__actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.owner-controls__note { color: var(--mute-2); font-size: 11px; max-width: 30ch; text-align: right; }
+.btn {
+  font: inherit; font-size: 13px; padding: 9px 16px; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.btn:disabled { color: var(--mute-2); cursor: not-allowed; }
+.linklike { font: inherit; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.owner-trust { color: var(--mute); font-size: 13px; margin: 26px 0 40px; }
+
+@media (max-width: 860px) {
+  .owner-hero { grid-template-columns: 1fr; gap: 26px; }
+  .owner-total { text-align: left; }
+  .owner-cards { grid-template-columns: 1fr; }
+  .owner-controls { flex-direction: column; align-items: flex-start; }
+  .owner-controls__actions { align-items: flex-start; }
+  .owner-controls__note { text-align: left; }
+}
