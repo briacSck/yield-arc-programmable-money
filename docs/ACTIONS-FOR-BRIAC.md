@@ -23,21 +23,24 @@ Send this now, before the deploy, so the process is already moving.
 > and we've completed a full subscribe/redeem round trip successfully (deposit
 > `0x46b1dba7…`, redeem `0xfd6e3a65…`).
 >
-> We're now moving the position from the wallet into a smart contract: an owner-revocable treasury
-> mandate that holds a company's operating cash and subscribes the surplus into USYC on the
-> company's behalf, under on-chain bounds the owner sets.
+> We've now moved that position into a smart contract, deployed and live:
 >
-> Two questions:
+> - **Contract to allowlist: `0xd41d3648c71641fb2801415726787d5728492f70`** (Arc testnet, deployed
+>   at block 54088009 by our Circle developer-controlled company wallet
+>   `0x4704fB05a6e87C482090cF5534E86c9ab44bBFda`)
+>   https://testnet.arcscan.app/address/0xd41d3648c71641fb2801415726787d5728492f70
+> - It's an owner-revocable treasury mandate: it holds a company's operating cash and subscribes
+>   the surplus into USYC under on-chain bounds the owner sets. Both roles are needed — the
+>   contract **calls `Teller.deposit`** and **holds the USYC share**
+>   (`RolesAuthority.canCall(addr, Teller, 0x6e553f65)` currently returns false for it).
+> - Source is public (`contracts/contracts/AgentMandateV2.sol` in our repo): self-contained, no
+>   upgradeability, no admin key beyond the owner's own exit, 68 tests.
 >
-> 1. What is the process to have a **contract address** granted the USYC subscription role on Arc
->    testnet (the role checked by `RolesAuthority.canCall(addr, Teller, 0x6e553f65)`)? We can supply
->    the deployed address, source, and the deploying/owning wallet.
-> 2. Is there anything about a contract holder (as opposed to an EOA) that changes the eligibility
->    review — and does the same route exist on mainnet for a regulated entity? We're on the AMF/CIF
->    authorisation track in France and expect to hold client assets under a discretionary mandate.
+> Could you add this contract address to the USYC subscription allowlist on Arc testnet?
 >
-> Happy to share the contract source and tests; it's a small, self-contained mandate with no
-> upgradeability and no admin key beyond the owner's own exit.
+> One forward-looking question: does the same route exist on mainnet for a regulated entity? We're
+> on the AMF/CIF authorisation track in France and expect to hold client assets under a
+> discretionary mandate.
 >
 > Thanks,
 > Briac — YIELD
