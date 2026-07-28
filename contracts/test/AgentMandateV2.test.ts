@@ -354,10 +354,13 @@ describe('AgentMandateV2', () => {
       await useVenue();
       await venue.setFailDeposit(true);
 
-      // A reverting venue bubbles its own revert rather than a named error — the deposit is a
-      // direct external call, deliberately not wrapped in try/catch, so the whole thing fails and
-      // the decisionId is never burned. `.reverted` is deprecated in this matcher version.
-      await expect(mandate.connect(agent).deposit(9_000n, id('d-1'), FH)).to.be.revert(ethers);
+      // A reverting venue bubbles its OWN revert rather than a named mandate error — the deposit is
+      // a direct external call, deliberately not wrapped in try/catch, so the whole thing fails and
+      // the decisionId is never burned. Asserting the exact bubbled string is stronger than a bare
+      // "it reverted": it proves the failure came from the venue and was not swallowed on the way.
+      await expect(mandate.connect(agent).deposit(9_000n, id('d-1'), FH)).to.be.revertedWith(
+        'MockYieldVenue: deposit disabled',
+      );
       expect(await mandate.companyBalance()).to.equal(50_000n); // nothing moved
       expect(await mandate.deployedBalance()).to.equal(0n);
       expect(await mandate.decisionUsed(id('d-1'))).to.equal(false);
