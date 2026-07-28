@@ -12,11 +12,16 @@ export function ForecastCone({
   forecast,
   floorUsdc,
   moves,
+  revoked,
   revokedAt,
 }: {
   forecast: ForecastResult | null;
   floorUsdc: string | null;
   moves: EventLogRecord[];
+  /** Is the mandate revoked right now? Drives the dimmed styling. */
+  revoked: boolean;
+  /** WHEN it was revoked — null when that record has scrolled out of the window. Drives only the
+   *  marker, so an unknown timestamp dims the cone without drawing the rule at a fabricated date. */
   revokedAt: string | null;
 }) {
   if (!forecast || forecast.series.length < 2) {
@@ -93,13 +98,13 @@ export function ForecastCone({
       ))}
 
       {/* cone */}
-      <polygon points={band} fill="var(--accent)" opacity={revokedAt ? 0.08 : 0.16} />
-      <polyline points={line('p10')} fill="none" stroke="var(--accent)" strokeWidth="2" opacity={revokedAt ? 0.35 : 0.8} />
-      <polyline points={line('p90')} fill="none" stroke="var(--accent)" strokeWidth="2" opacity={revokedAt ? 0.35 : 0.8} />
+      <polygon points={band} fill="var(--accent)" opacity={revoked ? 0.08 : 0.16} />
+      <polyline points={line('p10')} fill="none" stroke="var(--accent)" strokeWidth="2" opacity={revoked ? 0.35 : 0.8} />
+      <polyline points={line('p90')} fill="none" stroke="var(--accent)" strokeWidth="2" opacity={revoked ? 0.35 : 0.8} />
       <polyline
         points={line('p50')}
         fill="none"
-        stroke={revokedAt ? 'var(--mute-2)' : 'var(--ink)'}
+        stroke={revoked ? 'var(--mute-2)' : 'var(--ink)'}
         strokeWidth="2.5"
       />
 
