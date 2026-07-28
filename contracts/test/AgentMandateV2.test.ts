@@ -55,8 +55,13 @@ describe('AgentMandateV2', () => {
 
     /** Owner funds the company pool. The `mint` is the Arc duality the EVM cannot reproduce. */
     const fund = async (poolUnits: bigint) => {
-      await mandate.connect(owner).fundCompany({ value: poolUnits * SCALE });
+      const tx = await mandate.connect(owner).fundCompany({ value: poolUnits * SCALE });
+      // The mock cannot mirror Arc's native/ERC-20 duality (nothing inside the EVM can pull another
+      // account's native value), so the 6-dec side is minted explicitly. See the header note.
       await usdc.mint(mandateAddr, poolUnits);
+      // Returned so `expect(fund(...)).to.emit(...)` has a transaction to inspect. Without this the
+      // matcher receives undefined and dies destructuring `hash`.
+      return tx;
     };
     const warp = async (seconds: number) => {
       await ethers.provider.send('evm_increaseTime', [seconds]);
@@ -349,7 +354,10 @@ describe('AgentMandateV2', () => {
       await useVenue();
       await venue.setFailDeposit(true);
 
-      await expect(mandate.connect(agent).deposit(9_000n, id('d-1'), FH)).to.be.reverted;
+      // A reverting venue bubbles its own revert rather than a named error — the deposit is a
+      // direct external call, deliberately not wrapped in try/catch, so the whole thing fails and
+      // the decisionId is never burned. `.reverted` is deprecated in this matcher version.
+      await expect(mandate.connect(agent).deposit(9_000n, id('d-1'), FH)).to.be.revert(ethers);
       expect(await mandate.companyBalance()).to.equal(50_000n); // nothing moved
       expect(await mandate.deployedBalance()).to.equal(0n);
       expect(await mandate.decisionUsed(id('d-1'))).to.equal(false);
