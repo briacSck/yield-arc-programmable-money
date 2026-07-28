@@ -3,41 +3,41 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "53301622",
+  "scannedThroughBlock": "54049089",
   "compliant": true,
-  "totalMoves": 5,
+  "totalMoves": 8,
   "source": "chain",
   "closestApproachToFloorUsdc": "1000000",
   "invariants": [
     {
       "key": "floor",
       "status": "PASS",
-      "checks": 3,
-      "detail": "3/3 deposits kept the company balance above floor; closest approach $1 above floor"
+      "checks": 4,
+      "detail": "4/4 deposits kept the company balance above floor; closest approach $1 above floor"
     },
     {
       "key": "ticket",
       "status": "PASS",
-      "checks": 3,
-      "detail": "3/3 deposits within the per-ticket cap"
+      "checks": 4,
+      "detail": "4/4 deposits within the per-ticket cap"
     },
     {
       "key": "window",
       "status": "PASS",
-      "checks": 3,
-      "detail": "3/3 deposits within the 24h budget window"
+      "checks": 4,
+      "detail": "4/4 deposits within the 24h budget window"
     },
     {
       "key": "asymmetry",
       "status": "PASS",
-      "checks": 5,
-      "detail": "no deposit(s) while revoked; 2 withdraw(s) always allowed"
+      "checks": 8,
+      "detail": "no deposit(s) while revoked; 4 withdraw(s) always allowed"
     },
     {
       "key": "receipt",
       "status": "PASS",
-      "checks": 5,
-      "detail": "5/5 moves' receipts re-derive on-chain"
+      "checks": 8,
+      "detail": "8/8 moves' receipts re-derive on-chain"
     }
   ],
   "moves": [
@@ -125,9 +125,60 @@
         "asymmetry": "PASS",
         "receipt": "PASS"
       }
+    },
+    {
+      "decisionId": "0x061ccc494acaba66624f7c18e6654522ca49c5bcdcae79f77564d51ac634dc07",
+      "txHash": "0xc41a68a2bc3237c5d590a56afc6ea4ebd561f73393b0463a90094ad36fa7178c",
+      "kind": "WITHDRAW",
+      "blockNumber": "53335892",
+      "amountUsdc": "1847366",
+      "floorHeadroomUsdc": null,
+      "windowUtilization": null,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
+    },
+    {
+      "decisionId": "0xbe93d0b4bd50d7e975f3e3f0795214569f2e06d4be808c247b87bf8bd1101934",
+      "txHash": "0xf65adfc0733b384ee3b11eedcdeebcf49f9d6f194aeb5006e49137483c858292",
+      "kind": "WITHDRAW",
+      "blockNumber": "53376897",
+      "amountUsdc": "292958",
+      "floorHeadroomUsdc": null,
+      "windowUtilization": null,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
+    },
+    {
+      "decisionId": "0x68c9caf3df1c32bbf9f6b13e4178af040de80819538f44d7328467ff7986d601",
+      "txHash": "0xe6820fa897cce9644158360cf4f9125e680b05e6fbaa630c5f9bffd869678d39",
+      "kind": "DEPLOY",
+      "blockNumber": "54003925",
+      "amountUsdc": "1530619",
+      "floorHeadroomUsdc": "3469381",
+      "windowUtilization": 0.3061238,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
     }
   ],
   "notes": [],
-  "runAt": "2026-07-23T19:31:58.465Z",
+  "runAt": "2026-07-28T06:40:50.092Z",
   "version": "mandate-verify@0.1.0"
 }
