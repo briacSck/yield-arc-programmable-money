@@ -11,7 +11,9 @@ signed under a **verifiable on-chain agent identity (ERC-8004)**.
 **🟢 LIVE — trading autonomously on Arc testnet since July 14, 2026, no human in the loop.**
 
 [![nightly audit](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml/badge.svg)](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml)
-[![npm](https://img.shields.io/npm/v/@yield-cfo/mandate-verify?color=2a5547&label=mandate-verify)](https://www.npmjs.com/package/@yield-cfo/mandate-verify)
+<!-- The npm badge is intentionally absent until the package is published: it resolves against a
+     package that does not exist yet and renders as an error at the top of the front page. A missing
+     badge costs less than a broken one on a project whose pitch is that its claims check out. -->
 
 - **Live dashboard:** https://dashboard-production-abea.up.railway.app — every decision, its
   reason sentence, and its on-chain receipt, with explorer links, plus a **machine-audit
@@ -20,14 +22,11 @@ signed under a **verifiable on-chain agent identity (ERC-8004)**.
   — floor, per-ticket cap, 24h budget, owner-revocable.
 - **Agent identity:** ERC-8004 agentId `850878` · agent wallet [`0x93d9…ab7c`](https://testnet.arcscan.app/address/0x93d9c11c8e9e23e1e97e855668a27a14accaab7c)
   (Circle developer-controlled wallet).
-- **Machine-checked autonomy — one command:**
-  ```bash
-  npx -y @yield-cfo/mandate-verify
-  ```
-  replays the agent's FULL on-chain history and machine-checks every move against the mandate's
-  five invariants (floor / ticket / budget window / post-revocation asymmetry / decision receipts)
-  — the live history verifies **5/5 COMPLIANT in ~3 s**. See a violating agent fail the same audit:
-  `npx -y @yield-cfo/mandate-verify --fixture naive-agent`. Source + trust ladder: [`verifier/`](verifier/).
+- **Machine-checked autonomy:** the verifier replays the agent's FULL on-chain history and checks
+  every move against the mandate's five invariants (floor / ticket / budget window /
+  post-revocation asymmetry / decision receipts). The live history verifies **COMPLIANT in ~6 s**,
+  and the same tool run against a rogue agent **fails it, 13 violations**. How to run it, offline
+  or live: [Check it yourself](#check-it-yourself--four-rungs-offline-first).
 
 Built on: **Circle Wallets** (developer-controlled, MPC) · **Circle Contracts (SCP)** ·
 **native-USDC gas on Arc** · **ERC-8004 identity** · ERC-8183 (agent-to-agent settlement, W3).
@@ -63,12 +62,12 @@ solvency.** Any degraded input → `HOLD`. All money movement goes through one `
 | Path | What |
 |---|---|
 | `packages/shared/` | zod schemas = the pinned interface contracts (`ForecastResult`, `Decision`, `ChainExecutor`) |
-| `contracts/` | `SweepEscrow` (min-balance covenant) → `AgentMandate` (the on-chain mandate) + Hardhat tests |
+| `contracts/` | `AgentMandate` (the live on-chain mandate) + `AgentMandateV2` (venue-aware: subscribes the deployed surplus into an ERC-4626 yield venue, deploys *alongside* v1 so v1 keeps its record) + 68 Hardhat tests |
 | `agent/` | Node worker: forecast client · decision engine · `ChainExecutor` · scheduler · heartbeat |
 | `forecast/` | deterministic baseline forecast (+ optional proxy to the t0 model service) |
 | `scenario/` | seeded-ledger generator + simulated-clock demo driver |
-| `dashboard/` | live decision log + explorer links (Next.js, on Railway) |
-| `verifier/` | *(W2, **core shipped**)* judge-runnable invariant verifier (`@yield-cfo/mandate-verify`) — two-layer (fetch → pure replay core), machine-checks the 5 mandate invariants over full live history in one command. 17 tests inc. compliant-adversarial fixtures + a live-history golden test |
+| `dashboard/` | **the product**: the owner's screen (the answer, the brief, "can I afford it?", what the agent did) with the full machine-checked record on the same page — every line drills in place to its hash and transaction. Next.js, on Railway |
+| `verifier/` | judge-runnable invariant verifier (`@yield-cfo/mandate-verify`) — two-layer (fetch → **pure, zero-I/O replay core**), machine-checks the 5 mandate invariants over full live history in one command. 20 tests including compliant-adversarial fixtures a naive verifier would wrongly flag, plus a golden test against real testnet history |
 | `underwriter/` | *(W3)* Claude Managed Agent that prices insurance for the CFO from its on-chain mandate + verified history — disclosed stub premium, daily certificate output |
 
 ## Status
@@ -80,20 +79,53 @@ identity registration, baseline forecast, and dashboard shipped in days 1–2; c
 verifier + audit surface. Build invariants for humans and AI agents: `AGENTS.md`; live state and
 current targets: `docs/NOW.md`; deferred items: `TODOS.md`.
 
-## Getting started
+## Check it yourself — four rungs, offline first
+
+Each rung is independent. Rung 1 comes before rung 2 deliberately: it is faster, works behind any
+firewall, and it is the one that still answers if the public Arc endpoints are rate-limiting.
+
+| | What | Cost | If it fails |
+|---|---|---|---|
+| **0** | Watch it: [the live dashboard](https://dashboard-production-abea.up.railway.app) | 0 s | — |
+| **1** | **Offline proof**, no network: `git clone` then `npx tsx verifier/src/cli.ts --fixture live-snapshot` (exits 0) and `--fixture naive-agent` (a rogue agent, **13 violations, exits 1**) | ~1 s | nothing to fail |
+| **2** | **Live history**: `npx tsx verifier/src/cli.ts` — replays every move the agent ever made against all five invariants | ~6 s | falls back to rung 1, exit code 2 |
+| **3** | **Read it**: the entire invariant logic is `verifier/src/core/replay.ts`, zero I/O. Then `npm test -w verifier` | ~2 s | — |
+
+Exit codes are a contract: **0** compliant · **1** a real violation (the tool working) · **2** an
+operational problem, nothing proven either way.
+
+> **`npx -y @yield-cfo/mandate-verify` is not live yet.** The package is built and ready but not
+> published, so that command 404s today. Use the clone path above until this note disappears.
+
+## Developing
 
 ```bash
 npm install
 npm run typecheck
-npm run test
+npm run test          # 175 tests across 6 workspaces
 ```
 
-Contracts (Hardhat 3, run from CI/WSL if your machine is ARM64):
+Contracts (Hardhat 3 — **must run on x64**; there is no `solidity-analyzer` build for Windows
+ARM64, so use CI or WSL):
 
 ```bash
-cd contracts && npm install && npm run compile && npm test
+cd contracts && npm install && npm run compile && npm test   # 68 tests
 ```
+
+## What we deliberately did not build
+
+Named, because a hackathon submission that lists every logo on the track card is less honest than
+one that says where it stopped:
+
+- **Gateway / CCTP** — a bakery has no cross-chain problem, and Unified Balance is USDC-only, so
+  the "unified euro balance" premise fails on contact. One venue, on Arc, is the honest scope.
+- **Paymaster** — gas on Arc is already native USDC. Sponsorship would add a dependency, not remove
+  one. We kept the gas-exhaustion guard instead and page on it.
+- **StableFX auto-conversion** — the FX exposure is real and is written up in the standard draft.
+  Automating a swap we do not yet need would be motion, not progress.
+- **A second ERC implementer** — one recruited in a week is a friend doing us a favour.
+- **French UI** — the product's market is French; this audience is not.
 
 ## License
 
-TBD.
+MIT (see `verifier/package.json`; the rest of the repo follows).
