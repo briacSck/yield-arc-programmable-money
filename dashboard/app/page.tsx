@@ -327,7 +327,7 @@ function Scoreboard({ audit }: { audit: AuditBlock }) {
           </div>
           <div className="scoreboard__verify">
             {/* Not the npm command: it is unpublished and 404s for anyone outside this repo. */}
-            verify it yourself: <code>git clone {REPO_URL} && npx tsx verifier/src/cli.ts</code>
+            verify it yourself: <code>git clone {REPO_URL} && cd yield-arc-programmable-money && npm install && npx tsx verifier/src/cli.ts</code>
           </div>
         </div>
 

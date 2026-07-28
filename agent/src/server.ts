@@ -172,6 +172,22 @@ async function handleOwnerAction(
         });
         return;
       }
+      // Sanity clamp against the live position. `parseFloorUnits` only proves the STRING is a
+      // canonical amount — "999999999999999999" passes it. A floor far above the treasury is not a
+      // cautious owner, it is a mistake or an attack: the agent could never deploy again, and every
+      // invariant would still read COMPLIANT while the product sat dead. Ceilinged at 2x total
+      // liquidity, which leaves room to genuinely park everything and then some.
+      const totalLiquidity = BigInt(snapshot.companyBalanceUsdc) + BigInt(snapshot.deployedUsdc);
+      const ceiling = totalLiquidity * 2n;
+      if (BigInt(floorUsdc) > ceiling) {
+        json(res, 400, {
+          ok: false,
+          error:
+            `a floor of ${floorUsdc} is more than twice the ${totalLiquidity} currently under management — ` +
+            'refusing, because it would permanently stop the agent from working. Nothing changed.',
+        });
+        return;
+      }
       result = await ctx.ownerActions.setFloor({
         floorUsdc,
         maxTicketUsdc: snapshot.maxTicketUsdc,

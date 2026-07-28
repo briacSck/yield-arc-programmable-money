@@ -15,6 +15,16 @@ export const dynamic = 'force-dynamic';
  * write into the worker — the worker would refuse anyway, but an internet-facing service should not
  * be the thing that discovers that.
  */
+/**
+ * Constant-time compare, so a passphrase cannot be recovered by timing the 401s.
+ */
+function secretsMatch(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function POST(request: Request) {
   const secret = (process.env.OWNER_ACTION_SECRET ?? '').trim();
   if (!secret) {
@@ -25,6 +35,38 @@ export async function POST(request: Request) {
           'Owner controls are not configured on this deployment (OWNER_ACTION_SECRET is unset). Nothing was sent.',
       },
       { status: 503 },
+    );
+  }
+
+  /**
+   * THE CALLER'S OWN GATE — this is the important one.
+   *
+   * `OWNER_ACTION_SECRET` protects the WORKER from direct callers. It does nothing to protect THIS
+   * route from the internet, because the route attaches that secret server-side for whoever asks.
+   * Without the check below, `curl -X POST <public-url>/api/owner -d '{"action":"pause"}'` pauses a
+   * live agent, from a URL printed in a public README.
+   *
+   * So the caller must present the owner passphrase too. It is typed once by the owner and kept in
+   * their browser; it never appears in the page source, because it is compared here on the server.
+   * Fails CLOSED: no passphrase configured means owner writes are disabled entirely, which is the
+   * right default for a public demo.
+   */
+  const uiPass = (process.env.OWNER_UI_PASSPHRASE ?? '').trim();
+  if (!uiPass || uiPass.length < 8) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          'Owner controls are disabled on this deployment: no owner passphrase is configured. Nothing was sent.',
+      },
+      { status: 503 },
+    );
+  }
+  const presented = (request.headers.get('x-owner-pass') ?? '').trim();
+  if (!secretsMatch(presented, uiPass)) {
+    return NextResponse.json(
+      { ok: false, error: 'That owner passphrase is not right. Nothing was sent, and nothing changed.' },
+      { status: 401 },
     );
   }
 

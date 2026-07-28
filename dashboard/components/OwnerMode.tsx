@@ -31,6 +31,9 @@ function newRequestId(): string {
 /** The mandate snapshot is read from chain with a ~15s cache — a refresh right after a write can still show the old state. */
 const CHAIN_CATCHUP_MS = 16_000;
 
+/** Where the owner's passphrase lives in THIS browser. Never sent anywhere but /api/owner. */
+const OWNER_PASS_KEY = 'yield.ownerPass';
+
 /**
  * The owner's screen — one screen, not a mode.
  *
@@ -80,11 +83,26 @@ export function OwnerMode({
     setActionError(null);
     setLastAction(null);
     try {
+      // The owner proves it is them. Held in this browser only; compared on the server, so it is
+      // never in the page source. Without this the proxy would attach the worker secret for ANY
+      // caller — a public URL that pauses a live agent.
+      let pass = window.localStorage.getItem(OWNER_PASS_KEY) ?? '';
+      if (!pass) {
+        pass = (window.prompt('Owner passphrase — this action moves real money on-chain.') ?? '').trim();
+        if (!pass) {
+          setPending(null);
+          return;
+        }
+        window.localStorage.setItem(OWNER_PASS_KEY, pass);
+      }
+
       const res = await fetch('/api/owner', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-owner-pass': pass },
         body: JSON.stringify({ action, requestId: newRequestId(), ...extra }),
       });
+      // A rejected passphrase must not stay cached, or every later click fails silently.
+      if (res.status === 401) window.localStorage.removeItem(OWNER_PASS_KEY);
       const body = (await res.json().catch(() => ({}))) as OwnerActionResponse;
       if (!res.ok || !body.ok) {
         throw new Error(body.error || `the request failed (HTTP ${res.status})`);
@@ -532,7 +550,7 @@ function ActivityRow({ action, verdict }: { action: AgentAction; verdict: MoveVe
               resolves the workspace symlink first. Swap it back the moment publish lands. */}
           <p className="drill__verify">
             Check it yourself, against the chain, not against us:{' '}
-            <code>git clone {REPO_URL} && npx tsx verifier/src/cli.ts</code>
+            <code>git clone {REPO_URL} && cd yield-arc-programmable-money && npm install && npx tsx verifier/src/cli.ts</code>
           </p>
         </div>
       )}
