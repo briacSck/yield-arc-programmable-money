@@ -612,3 +612,7 @@ button:focus-visible {
   .brief-grid { grid-template-columns: 1fr; gap: 24px; }
   .brief-outcome { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 20px; }
 }
+
+/* The forecast-held slice: above the floor, but the forecast says it is needed before the horizon
+   ends. Without it the bar calls money "spare" that the agent refuses to deploy. */
+.seg--held { background: var(--warn-bg); }

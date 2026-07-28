@@ -115,11 +115,17 @@ export function OwnerMode({
   const briefDirty = floorEur !== null && floorEur !== mandateFloorEur;
 
   const cover = useMemo(() => coverage(forecast, effectiveFloorUnits), [forecast, effectiveFloorUnits]);
-  const alloc = mandate ? allocation(mandate.companyBalanceUsdc, mandate.deployedUsdc, effectiveFloorUnits) : null;
   const actions = agentActivity(events);
 
+  // The worst point the forecast reaches. The agent guards against this as well as the floor, so
+  // the allocation bar must too — otherwise it shows money as "spare" that the brief refuses to
+  // deploy, and the two numbers sit side by side contradicting each other.
   const projectedLow = cover.tightest
     ? BigInt(effectiveFloorUnits) + cover.tightest.marginBaseUnits
+    : null;
+
+  const alloc = mandate
+    ? allocation(mandate.companyBalanceUsdc, mandate.deployedUsdc, effectiveFloorUnits, projectedLow)
     : null;
   const wouldDeploy = mandate
     ? deployableUnder(mandate.companyBalanceUsdc, effectiveFloorUnits, projectedLow, appetite)
@@ -535,6 +541,7 @@ function AllocationBar({ alloc }: { alloc: ReturnType<typeof allocation> }) {
   const pct = (v: bigint) => (total === 0 ? 0 : (Number(v) / total) * 100);
   const segments = [
     { key: 'reserved', label: 'Safety floor', value: alloc.reserved, cls: 'seg--reserved' },
+    { key: 'held', label: 'Held for what’s coming', value: alloc.heldForForecast, cls: 'seg--held' },
     { key: 'spare', label: 'Spare', value: alloc.spare, cls: 'seg--spare' },
     { key: 'working', label: 'Working', value: alloc.working, cls: 'seg--working' },
   ];
