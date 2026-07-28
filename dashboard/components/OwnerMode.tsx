@@ -13,8 +13,23 @@ import {
   type AgentAction,
   type YieldAppetite,
 } from '../lib/owner';
+import type { OwnerActionName, OwnerActionResponse } from '../lib/owner-action';
 import { DEMO_CLIENT, DEMO_SCALE, eur, eurFrom, toEur } from '../lib/scale';
 import { ARCSCAN, shortHash, usdc, when } from '../lib/format';
+
+/**
+ * One id per CLICK. The worker turns it into the Circle idempotency key, so a retried click is one
+ * transaction and two clicks are two — the browser decides which of those it is, not the network.
+ */
+function newRequestId(): string {
+  const c = globalThis.crypto;
+  return typeof c?.randomUUID === 'function'
+    ? c.randomUUID().replace(/-/g, '')
+    : `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+
+/** The mandate snapshot is read from chain with a ~15s cache — a refresh right after a write can still show the old state. */
+const CHAIN_CATCHUP_MS = 16_000;
 
 /**
  * The owner's screen — one screen, not a mode.
@@ -27,7 +42,16 @@ import { ARCSCAN, shortHash, usdc, when } from '../lib/format';
  * Progressive disclosure, not a toggle: an accountant does not want a different screen, they want
  * the same number with its provenance attached.
  */
-export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; onJumpToEvidence: () => void }) {
+export function OwnerMode({
+  data,
+  onJumpToEvidence,
+  onRefresh,
+}: {
+  data: EventsResponse;
+  onJumpToEvidence: () => void;
+  /** Re-read the feed after an owner action lands. */
+  onRefresh?: () => void;
+}) {
   const { mandate, events, latestForecast, audit } = data;
   const forecast = latestForecast?.forecast ?? null;
   const revoked = mandate?.revoked ?? false;
@@ -35,6 +59,55 @@ export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; on
   // The brief is local until applied: moving a slider must never move money.
   const [floorEur, setFloorEur] = useState<number | null>(null);
   const [appetite, setAppetite] = useState<YieldAppetite>('balanced');
+
+  // ── Owner controls ────────────────────────────────────────────────────────────────────────
+  // These write to the mandate for real, through /api/owner → the worker → the company wallet.
+  // Three states are visible at all times: pending (nothing else can be clicked), the transaction
+  // when it lands, and the failure IN FULL when it does not. A silent failure on this screen would
+  // tell an owner their agent is paused when it is not — the one lie this product cannot afford.
+  const [pending, setPending] = useState<OwnerActionName | null>(null);
+  const [confirmingPause, setConfirmingPause] = useState(false);
+  // Both are tagged with the action they belong to, so a failed pause can never render as a red
+  // line under the floor slider (or the reverse).
+  const [actionError, setActionError] = useState<{ action: OwnerActionName; message: string } | null>(null);
+  const [lastAction, setLastAction] = useState<{ action: OwnerActionName; txHash: string; explorerUrl: string } | null>(
+    null,
+  );
+
+  async function runOwnerAction(action: OwnerActionName, extra: Record<string, string> = {}) {
+    if (pending) return;
+    setPending(action);
+    setActionError(null);
+    setLastAction(null);
+    try {
+      const res = await fetch('/api/owner', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action, requestId: newRequestId(), ...extra }),
+      });
+      const body = (await res.json().catch(() => ({}))) as OwnerActionResponse;
+      if (!res.ok || !body.ok) {
+        throw new Error(body.error || `the request failed (HTTP ${res.status})`);
+      }
+      setLastAction({
+        action,
+        txHash: body.txHash ?? '',
+        explorerUrl: body.explorerUrl ?? (body.txHash ? `${ARCSCAN}/tx/${body.txHash}` : ''),
+      });
+      // The slider deliberately stays where the owner put it. Snapping it back to the chain value
+      // would show them the OLD floor for the ~15s the read is cached, right under the words "your
+      // floor is set". Instead the "Apply" affordance disappears by itself once the chain agrees.
+      onRefresh?.();
+      // The mandate read is cached ~15s upstream; one more refresh so the screen ends up truthful
+      // without the owner having to reload.
+      setTimeout(() => onRefresh?.(), CHAIN_CATCHUP_MS);
+    } catch (err) {
+      setActionError({ action, message: (err as Error).message });
+    } finally {
+      setPending(null);
+      setConfirmingPause(false);
+    }
+  }
 
   const mandateFloorEur = mandate ? Math.round(toEur(mandate.floorUsdc)) : 0;
   const effectiveFloorEur = floorEur ?? mandateFloorEur;
@@ -170,17 +243,28 @@ export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; on
             </div>
             {briefDirty && (
               <div className="brief-apply">
-                <button className="btn btn--primary" disabled title="Sign-in required">
-                  Apply — set my floor to {eur(effectiveFloorEur)}
+                <button
+                  className="btn btn--primary"
+                  disabled={!mandate || pending !== null}
+                  onClick={() => void runOwnerAction('floor', { floorUsdc: effectiveFloorUnits })}
+                >
+                  {pending === 'floor' ? 'Setting your floor…' : `Apply — set my floor to ${eur(effectiveFloorEur)}`}
                 </button>
-                <button className="linklike" onClick={() => setFloorEur(null)}>
+                <button className="linklike" onClick={() => setFloorEur(null)} disabled={pending !== null}>
                   reset
                 </button>
-                <div className="owner-controls__note">
-                  Previewing only. Applying writes a real transaction to your mandate on-chain.
+                <div className="owner-controls__note owner-controls__note--wide">
+                  Previewing only. Applying writes a real transaction to your mandate on-chain — from
+                  then on the contract itself refuses anything that would cross it.
                 </div>
               </div>
             )}
+            <ActionFeedback
+              error={actionError?.action === 'floor' ? actionError.message : null}
+              result={lastAction?.action === 'floor' ? lastAction : null}
+              successCopy="Your floor is set. Your agent cannot go below it — the contract refuses it."
+              failureCopy="Your floor was NOT changed. Nothing moved."
+            />
           </div>
         </div>
       </section>
@@ -223,12 +307,52 @@ export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; on
           </div>
         </div>
         <div className="owner-controls__actions">
-          <button className="btn" disabled title="Sign-in required">
-            {revoked ? 'Restart my agent' : 'Pause my agent'}
-          </button>
+          {confirmingPause ? (
+            <div className="owner-confirm">
+              <div className="owner-confirm__q">Pause your agent?</div>
+              <p className="owner-confirm__body">
+                It stops moving your money straight away. Anything already working for you can still
+                come back to your account — pausing can never block that. You can restart it whenever
+                you like.
+              </p>
+              <div className="owner-confirm__row">
+                <button className="btn btn--primary" onClick={() => void runOwnerAction('pause')} disabled={pending !== null}>
+                  {pending === 'pause' ? 'Pausing…' : 'Yes, pause it'}
+                </button>
+                <button className="linklike" onClick={() => setConfirmingPause(false)} disabled={pending !== null}>
+                  not now
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="btn"
+              disabled={pending !== null}
+              onClick={() => (revoked ? void runOwnerAction('resume') : setConfirmingPause(true))}
+            >
+              {pending === 'resume' ? 'Restarting…' : revoked ? 'Restart my agent' : 'Pause my agent'}
+            </button>
+          )}
           <div className="owner-controls__note">
-            Sign-in required — this runs as a real on-chain transaction from your wallet.
+            Runs as a real transaction on your mandate, signed by your company wallet. In this demo
+            it is protected by a shared secret rather than a wallet sign-in.
           </div>
+          <ActionFeedback
+            error={
+              actionError && (actionError.action === 'pause' || actionError.action === 'resume')
+                ? actionError.message
+                : null
+            }
+            result={
+              lastAction && (lastAction.action === 'pause' || lastAction.action === 'resume') ? lastAction : null
+            }
+            successCopy={
+              lastAction?.action === 'pause'
+                ? 'Paused on-chain. Your agent can no longer put money to work; what is already working can still come home.'
+                : 'Restarted on-chain. Your agent is working for you again.'
+            }
+            failureCopy="Your agent's status is UNCHANGED. Check the mandate on arcscan before trying again."
+          />
         </div>
       </section>
 
@@ -240,6 +364,49 @@ export function OwnerMode({ data, onJumpToEvidence }: { data: EventsResponse; on
         </button>
       </p>
     </>
+  );
+}
+
+/**
+ * What happened, in the owner's words, with the proof attached.
+ *
+ * A failure is stated as a FACT about their money ("your agent's status is unchanged"), not as a
+ * UI apology, and the machine's own error text is shown verbatim underneath rather than smoothed
+ * over — on a screen whose entire claim is that it reports rather than reassures, a swallowed
+ * error is the worst possible bug.
+ */
+function ActionFeedback({
+  error,
+  result,
+  successCopy,
+  failureCopy,
+}: {
+  error: string | null;
+  result: { txHash: string; explorerUrl: string } | null;
+  successCopy: string;
+  failureCopy: string;
+}) {
+  if (error) {
+    return (
+      <div className="owner-actionmsg owner-actionmsg--fail" role="alert">
+        <strong>{failureCopy}</strong>
+        <span className="owner-actionmsg__detail">{error}</span>
+      </div>
+    );
+  }
+  if (!result) return null;
+  return (
+    <div className="owner-actionmsg owner-actionmsg--ok" role="status">
+      <strong>{successCopy}</strong>
+      {result.txHash && (
+        <span className="owner-actionmsg__detail">
+          <a href={result.explorerUrl} target="_blank" rel="noreferrer">
+            {shortHash(result.txHash)} ↗
+          </a>{' '}
+          — the screen catches up within about 15 seconds.
+        </span>
+      )}
+    </div>
   );
 }
 

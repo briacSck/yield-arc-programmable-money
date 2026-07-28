@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EventLogRecord } from '@yield/shared';
 import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
 import type { EventsResponse } from '../src/api-contract';
@@ -23,28 +23,25 @@ export default function Page() {
   const [data, setData] = useState<EventsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/events?limit=200', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`upstream ${res.status}`);
-        const body = (await res.json()) as EventsResponse;
-        if (alive) {
-          setData(body);
-          setError(null);
-        }
-      } catch (err) {
-        if (alive) setError((err as Error).message);
-      }
-    };
-    void load();
-    const timer = setInterval(load, POLL_MS);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
+  // Hoisted out of the effect so an owner action can force an immediate re-read the moment its
+  // transaction lands, instead of leaving the screen stale for up to a poll interval.
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events?limit=200', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`upstream ${res.status}`);
+      const body = (await res.json()) as EventsResponse;
+      setData(body);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [load]);
 
   const revoked = data?.mandate?.revoked ?? false;
   const revokedAt = useMemo(() => {
@@ -90,6 +87,7 @@ export default function Page() {
       <OwnerMode
         data={data}
         onJumpToEvidence={() => document.getElementById('evidence')?.scrollIntoView({ behavior: 'smooth' })}
+        onRefresh={() => void load()}
       />
 
       {/*

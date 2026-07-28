@@ -522,6 +522,27 @@ button:focus-visible {
 .linklike { font: inherit; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .owner-trust { color: var(--mute); font-size: 13px; margin: 26px 0 40px; }
 
+/* ─── Owner controls: confirmation + what actually happened ───────────────
+   The write paths. Pending, landed and failed are all visible states — a silent failure here
+   would tell an owner their agent is paused when it is not. */
+.owner-confirm {
+  border: 1px solid var(--line); border-radius: 9px; padding: 14px 16px;
+  max-width: 44ch; text-align: left; background: var(--paper);
+}
+.owner-confirm__q { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.owner-confirm__body { color: var(--mute); font-size: 13px; line-height: 1.5; margin-bottom: 12px; }
+.owner-confirm__row { display: flex; align-items: center; gap: 14px; }
+.owner-actionmsg {
+  display: flex; flex-direction: column; gap: 4px; margin-top: 10px;
+  font-size: 12px; line-height: 1.5; max-width: 46ch; text-align: left;
+  border-left: 2px solid var(--line); padding-left: 10px;
+}
+.owner-actionmsg--ok { border-left-color: var(--accent); }
+.owner-actionmsg--fail { border-left-color: var(--warn); }
+.owner-actionmsg--fail strong { color: var(--warn); }
+.owner-actionmsg__detail { color: var(--mute); word-break: break-word; }
+.owner-controls__note--wide { max-width: 44ch; text-align: left; }
+
 @media (max-width: 860px) {
   .owner-hero { grid-template-columns: 1fr; gap: 26px; }
   .owner-total { text-align: left; }
