@@ -3,8 +3,8 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "toBlock": "53950410",
-  "capturedAt": "2026-07-27",
+  "toBlock": "54645259",
+  "capturedAt": "2026-07-31",
   "events": [
     {
       "blockNumber": "51743317",
@@ -138,6 +138,19 @@
         "kind": 1,
         "amount": "292958",
         "forecastHash": "0xe3a14cad84395254bcf9edbab5d183e2c4d3abad2f70aa29a32ab4adcfc52cf5"
+      }
+    },
+    {
+      "blockNumber": "54003925",
+      "logIndex": 22,
+      "timestamp": "1785197350",
+      "txHash": "0xe6820fa897cce9644158360cf4f9125e680b05e6fbaa630c5f9bffd869678d39",
+      "name": "DecisionExecuted",
+      "args": {
+        "decisionId": "0x68c9caf3df1c32bbf9f6b13e4178af040de80819538f44d7328467ff7986d601",
+        "kind": 0,
+        "amount": "1530619",
+        "forecastHash": "0x7a77f6f0b5274caaf719213b4a07ce21818db38c1b7daf93328db8646afe25ad"
       }
     }
   ]

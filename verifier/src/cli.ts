@@ -130,7 +130,7 @@ const HELP = `
   OPTIONS
     --fixture <name>     verify a compiled-in fixture instead of the live chain (no network):
                            naive-agent    a naive unbounded agent — the negative demo (exits 1)
-                           live-snapshot  YIELD's history snapshotted 2026-07-23 (offline, exits 0)
+                           live-snapshot  YIELD's history snapshotted 2026-07-31 (offline, exits 0)
     --address <0x..>     verify a different mandate (any conforming deployment)
     --deploy-block <n>   the mandate's constructor block (required with a custom --address)
     --rpc <url>          override the RPC endpoint (default: built-in Arc endpoint pool)

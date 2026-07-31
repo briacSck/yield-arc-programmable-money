@@ -19,6 +19,10 @@ import type { ForecastStore } from './forecast-store.js';
  * never touch the loop.
  *
  *   GET  /events?limit=N  → stats + latest forecast snapshot + last N records (default 200)
+ *   GET  /forecasts?inputsHash=0x… → the full receipt PREIMAGE (forecast + canonical inputs) whose
+ *                           hash a DecisionExecuted event committed on-chain. Read-only, additive,
+ *                           public while inputs are synthetic (§18.1.2b privacy coupling: pilot
+ *                           mode requires salted commitments BEFORE real data flows).
  *   GET  /health          → CONTENT-based status (freshness alone lies: a FAILED storm or a
  *                           gas-dead agent still writes fresh records — eng review #12)
  *   POST /owner/pause     → AgentMandate.revoke()      ┐ owner-only, shared-secret authed,
@@ -284,6 +288,23 @@ export function createWorkerRequestListener(ctx: WorkerServerContext) {
           res.writeHead(200, { 'content-type': 'application/json' });
           res.end(JSON.stringify(body));
         })();
+        return;
+      }
+      if (url.pathname === '/forecasts') {
+        // The disclosure route: given the forecastHash an on-chain receipt committed, serve the
+        // preimage that re-hashes to it. Strict shape check FIRST — a malformed key must 400, not
+        // scan the store (and never echo unvalidated input beyond its first characters).
+        const inputsHash = url.searchParams.get('inputsHash') ?? '';
+        if (!/^0x[0-9a-fA-F]{64}$/.test(inputsHash)) {
+          json(res, 400, { error: 'inputsHash must be a 0x-prefixed 32-byte hex string' });
+          return;
+        }
+        const snapshot = ctx.forecastStore.byInputsHash(inputsHash);
+        if (!snapshot) {
+          json(res, 404, { error: `no forecast snapshot committed ${inputsHash}` });
+          return;
+        }
+        json(res, 200, snapshot);
         return;
       }
       if (url.pathname === '/health') {

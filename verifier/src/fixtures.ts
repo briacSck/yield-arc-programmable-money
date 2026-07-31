@@ -14,7 +14,7 @@ export type FixtureName = (typeof FIXTURE_NAMES)[number];
 
 const FIXTURE_FILE: Record<FixtureName, string> = {
   'naive-agent': 'naive-agent.json',
-  'live-snapshot': 'live-history-2026-07-27.json',
+  'live-snapshot': 'live-history-2026-07-31.json',
 };
 
 export interface LoadedFixture {

@@ -58,4 +58,25 @@ export class ForecastStore {
     }
     return null;
   }
+
+  /**
+   * Snapshot whose forecast committed `inputsHash` — the receipt-preimage lookup (§18.1.2b: the
+   * join key present verbatim on both sides; the on-chain event carries it as `forecastHash`).
+   * Case-insensitive: hex hashes may arrive checksummed-cased from an explorer copy-paste.
+   */
+  byInputsHash(inputsHash: string): ForecastSnapshot | null {
+    if (!existsSync(this.filePath)) return null;
+    const needle = inputsHash.toLowerCase();
+    for (const line of readFileSync(this.filePath, 'utf8').split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const parsed = JSON.parse(trimmed) as ForecastSnapshot;
+        if (parsed.forecast?.inputsHash?.toLowerCase() === needle) return parsed;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  }
 }
