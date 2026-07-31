@@ -209,6 +209,9 @@ function DemoApp() {
             <span className="playbar__day mono">
               day {day}/{total}
             </span>
+            {/* Restored by review: the pace hint was silently dropped with the scrubber's arrival.
+                Phone CSS already hides it; on desktop it still answers "how fast is this?". */}
+            <span className="playbar__hint">1 second ≈ {speed} simulated day{speed > 1 ? 's' : ''}</span>
           </div>
         </div>
       }
