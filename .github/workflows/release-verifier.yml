@@ -8,11 +8,24 @@ name: release-verifier
 # (npmjs.com → Access Tokens → Granular, scope @yield-cfo, read+write). Then:
 #   git tag verifier-v0.1.0 && git push origin verifier-v0.1.0
 # Local publish (no provenance) also works: cd verifier && npm publish.
+#
+# The `dry-run` job runs continuously (PRs touching the verifier + main) and again before any
+# real publish, exercising the full publish path minus the registry write: `npm publish --dry-run`,
+# then `npm pack` and a cold run of the packed tarball from an EMPTY temp dir. That last step is
+# the guard against the prepack/stale-bundle class of bug (`prepublishOnly` does not run on
+# `npm pack`; it once nearly shipped a tarball with a broken offline fixture path). So the
+# founder-side publish is literally: set NPM_TOKEN, push the tag.
 
 on:
   push:
+    branches: [main]
     tags:
       - 'verifier-v*'
+  pull_request:
+    paths:
+      - 'verifier/**'
+      - 'package-lock.json'
+      - '.github/workflows/release-verifier.yml'
   workflow_dispatch: {}
 
 permissions:
@@ -20,7 +33,43 @@ permissions:
   id-token: write # required for npm provenance (OIDC)
 
 jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Test
+        run: npm test --workspace verifier
+      - name: Publish dry-run (full publish path, no registry write, no token)
+        run: npm publish --dry-run --access public
+        working-directory: verifier
+      - name: Pack the release artifact
+        id: pack
+        working-directory: verifier
+        run: echo "tgz=$(pwd)/$(npm pack --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cold-run the packed tarball from an empty temp dir
+        # House rule: never validate the judge path from inside the repo. This runs the exact
+        # artifact a tag would publish, with no checkout and no workspace node_modules in reach.
+        run: |
+          set -euo pipefail
+          cd "$(mktemp -d)"
+          npx -y "${{ steps.pack.outputs.tgz }}" --fixture live-snapshot
+          set +e
+          npx -y "${{ steps.pack.outputs.tgz }}" --fixture naive-agent
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::naive-agent must exit 1 (a real violation). Got $code."
+            exit 1
+          fi
+
   publish:
+    # Only a `verifier-v*` tag or a manual dispatch publishes; PR/main runs stop at dry-run.
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    needs: dry-run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

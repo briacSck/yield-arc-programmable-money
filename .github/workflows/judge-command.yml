@@ -80,3 +80,56 @@ jobs:
           if [ "$code" -eq 2 ]; then
             echo "::warning::live run hit an operational error (exit 2) — infrastructure, not a violation."
           fi
+
+  # The front-page one-liner, verbatim. The clone-path job above cannot guard it: the printed
+  # command resolves a released tarball (or, post-publish, the npm registry), not this checkout.
+  # This job greps the command out of README.md — so what CI runs is BY CONSTRUCTION the string a
+  # judge copies — and runs it from an empty temp dir on a machine that has never seen the repo.
+  # It survives the future flip from the tarball URL to `npx -y @yield-cfo/mandate-verify` unchanged.
+  judge-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Extract the printed front-page command from README.md
+        run: |
+          set -euo pipefail
+          CMD="$(grep -E '^> npx -y ' README.md | head -1 | sed 's/^> //')"
+          if [ -z "$CMD" ]; then
+            echo "::error::no front-page judge command (a '> npx -y …' line) found in README.md."
+            exit 1
+          fi
+          echo "Printed command: $CMD"
+          echo "JUDGE_CMD=$CMD" >> "$GITHUB_ENV"
+
+      - name: The printed command must verify live (exit 0; exit 2 = infra warning)
+        run: |
+          set +e
+          cd "$(mktemp -d)"
+          $JUDGE_CMD
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::live run hit an operational error (exit 2) — infrastructure, not a violation."
+            exit 0
+          fi
+          if [ "$code" -ne 0 ]; then
+            echo "::error::the printed judge command exited $code — a judge following our README gets a failure."
+            exit 1
+          fi
+
+      - name: The printed command + --fixture naive-agent must exit 1 (offline, deterministic)
+        run: |
+          set +e
+          cd "$(mktemp -d)"
+          $JUDGE_CMD --fixture naive-agent
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::naive-agent must exit 1 (a real violation). Got $code."
+            exit 1
+          fi
