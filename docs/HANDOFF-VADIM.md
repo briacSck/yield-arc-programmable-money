@@ -41,8 +41,10 @@ pre-Demo-Day) — ask Briac to send them, but nothing below depends on reading t
   - `Teller.deposit` (`0x6e553f65` on teller `0x9fdF14c5B14173D74C08Af27AebFf39240dC105A`): GRANTED
   - hold USYC share (`transfer` on share token `0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C`): GRANTED
   - Re-check anytime: `npx tsx agent/scripts/check-usyc-permission.ts 0xd41d…2f70`
-- `setVenue` is Briac's one command (`npx tsx agent/scripts/set-venue.ts --execute`; preflight
-  passed 2026-07-31). After it, v2's DEPLOY leg routes USDC→USYC shares. **v1 stays the live story.**
+- **`setVenue` is DONE** (2026-07-31, owner call from the company Circle wallet, read-back
+  verified: `venue` = Teller, `venueShare` = `0xe918…b86C`):
+  <https://testnet.arcscan.app/tx/0x00e6ed513c23e74404d7d484d699ec3ff271b20ad23235b2c7235e930a20b37c>
+  v2's DEPLOY leg now routes USDC→USYC shares. **v1 stays the live story.**
 - npm: `@yield-cfo/mandate-verify@0.1.0` never published, name unclaimed, no git tag. Blocked only
   on Briac's token. The README's front-page `npx` command 404s today (it says so itself).
 
