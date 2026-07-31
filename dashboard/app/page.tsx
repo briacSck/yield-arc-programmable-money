@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { EventLogRecord } from '@yield/shared';
 import { defaultSimConfig, simulate } from '@yield/scenario';
 import type { AuditBlock, MoveVerdictDto } from '../src/api-contract';
@@ -88,6 +88,14 @@ const DEMO_TICK_MS = 1000;
  * Honesty is structural: `demoEventsAt` never emits an audit block, an explorer URL or a chain
  * address, and the demo-aware components refuse owner writes and tx links.
  */
+/** Camera-facing chapter names for the §11 beats, in scripted order. */
+const BEAT_LABEL: Record<'deploy' | 'pullback' | 'exposure' | 'kicker', string> = {
+  deploy: 'deploy',
+  pullback: 'pull-back',
+  exposure: 'exposure',
+  kicker: 'kicker',
+};
+
 function DemoApp() {
   // Computed once per mount; deterministic, so every visitor watches the exact same quarter.
   const sim = useMemo(() => {
@@ -95,6 +103,12 @@ function DemoApp() {
     return { config, ticks: simulate(config) };
   }, []);
   const total = sim.ticks.length;
+  // The four scripted beats over the FULL run — the scrubber shows the whole quarter's chapters
+  // up front (they are scripted, not spoilers; the labels are what makes 90s a guided tour).
+  const beats = useMemo(
+    () => sim.ticks.filter((t) => t.beat).map((t) => ({ day: t.day, beat: t.beat! })),
+    [sim],
+  );
 
   const [day, setDay] = useState(1);
   const [playing, setPlaying] = useState(true);
@@ -117,6 +131,14 @@ function DemoApp() {
     setPlaying(true);
   };
   const atEnd = day >= total;
+  const nextBeat = beats.find((b) => b.day > day) ?? null;
+
+  /** Click-to-seek on the scrubber track (beats stopPropagation so their jump wins). */
+  const seek = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    setDay(Math.min(Math.max(Math.round(frac * (total - 1)) + 1, 1), total));
+  };
 
   return (
     <Screen
@@ -152,10 +174,41 @@ function DemoApp() {
             <button className="btn playbar__btn" onClick={restart}>
               Restart
             </button>
+            {/* The 90 seconds as a guided tour: the quarter's four scripted chapters are clickable
+                tick-marks on the timeline, plus a next-beat skip. Chapters, not spoilers. */}
+            <div className="scrub" onClick={seek} role="group" aria-label="Timeline — 90 simulated days with 4 chapter marks">
+              <div className="scrub__track">
+                <div className="scrub__fill" style={{ width: `${((day - 1) / (total - 1)) * 100}%` }} />
+                {beats.map((b, i) => (
+                  <button
+                    key={b.beat}
+                    className={`scrub__beat${day >= b.day ? ' scrub__beat--past' : ''}${sim.ticks[day - 1]!.beat === b.beat ? ' scrub__beat--now' : ''}`}
+                    style={{ left: `${((b.day - 1) / (total - 1)) * 100}%` }}
+                    title={`day ${b.day} — ${BEAT_LABEL[b.beat]}`}
+                    aria-label={`jump to ${BEAT_LABEL[b.beat]}, day ${b.day}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDay(b.day);
+                    }}
+                  >
+                    {/* Alternate label rows so adjacent chapters (exposure → pull-back are days
+                        apart) never overlap. */}
+                    <span className={`scrub__beatlabel${i % 2 === 1 ? ' scrub__beatlabel--alt' : ''}`}>{BEAT_LABEL[b.beat]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              className="btn playbar__btn"
+              onClick={() => nextBeat && setDay(nextBeat.day)}
+              disabled={!nextBeat}
+              title={nextBeat ? `skip to ${BEAT_LABEL[nextBeat.beat]} (day ${nextBeat.day})` : 'no beats ahead'}
+            >
+              next beat ⏭
+            </button>
             <span className="playbar__day mono">
               day {day}/{total}
             </span>
-            <span className="playbar__hint">1 second ≈ {speed} simulated day{speed > 1 ? 's' : ''}</span>
           </div>
         </div>
       }
@@ -196,6 +249,25 @@ function Screen({
   const running = daysSince(stats.firstOnChainMoveAt);
   const gasLow = mandate ? BigInt(mandate.agentGasWei) < 5n * 10n ** 16n : false;
   const auditViolations = audit ? audit.invariants.reduce((n, iv) => n + (iv.status === 'VIOLATION' ? 1 : 0), 0) : null;
+
+  // The kicker flash (demo only): the moment the BLOCKED row enters the log, scroll it into view
+  // and pulse it once — the thesis's punchline is currently the quietest pixel on screen. Fires
+  // once per pass; a restart (day drops below the kicker) re-arms it.
+  const kickerSeq = demo ? data.beats?.find((b) => b.beat === 'kicker')?.seq ?? null : null;
+  const kickerVisible = kickerSeq !== null && stats.cycles >= kickerSeq;
+  const [flashSeq, setFlashSeq] = useState<number | null>(null);
+  const kickerArmed = useRef(true);
+  useEffect(() => {
+    if (!kickerVisible) {
+      kickerArmed.current = true;
+      setFlashSeq(null);
+      return;
+    }
+    if (!kickerArmed.current) return;
+    kickerArmed.current = false;
+    setFlashSeq(kickerSeq);
+    document.getElementById(`sim-row-${kickerSeq}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [kickerVisible, kickerSeq]);
 
   return (
     <main className="wrap">
@@ -387,6 +459,8 @@ function Screen({
               demo={demo}
               verdict={e.execution ? audit?.verdictsByTxHash[e.execution.txHash.toLowerCase()] ?? null : null}
               auditRunAt={audit?.runAt ?? null}
+              id={demo ? `sim-row-${e.seq}` : undefined}
+              flash={demo && flashSeq === e.seq}
             />
           ))
         )}
@@ -591,6 +665,8 @@ function LogRow({
   demo,
   verdict,
   auditRunAt,
+  id,
+  flash,
 }: {
   record: EventLogRecord;
   /** Demo replay: timestamps are sim dates, and a "move" has a sim id, never a tx link. */
@@ -598,6 +674,10 @@ function LogRow({
   verdict?: MoveVerdictDto | null;
   /** When the last nightly audit ran. Distinguishes "not yet audited" from "audited, no verdict". */
   auditRunAt?: string | null;
+  /** Demo-only DOM anchor (`sim-row-<seq>`) so the kicker beat can auto-scroll to its row. */
+  id?: string;
+  /** One-shot pulse when this row is the kicker's BLOCKED move — sage, never red. */
+  flash?: boolean;
 }) {
   const { decision, status, execution } = record;
   const isMove = status === 'CONFIRMED';
@@ -623,7 +703,7 @@ function LogRow({
   const pastCoverage = isMove && !verdict && !!auditRunAt && Date.parse(record.loggedAt) > Date.parse(auditRunAt);
 
   return (
-    <div className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}`}>
+    <div id={id} className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}${flash ? ' log-row--flash' : ''}`}>
       {/* Sim rows read "14 May" like the owner surface, not raw ISO — one date language per page. */}
       <span className="log-row__ts">{demo ? dayMonth(record.loggedAt.slice(0, 10)) : when(record.loggedAt)}</span>
       <span className={`kind ${kindClass}`}>

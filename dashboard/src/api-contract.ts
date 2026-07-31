@@ -104,6 +104,11 @@ export interface EventsResponse {
    * worker feed, where the cone renders forward-only exactly as before.
    */
   history?: BalancePointDto[];
+  /**
+   * Additive, demo-only: the §11 scripted beats among the replayed days, keyed by row seq (= sim
+   * day). Drives the scrubber chapters and the kicker flash; absent from the live worker feed.
+   */
+  beats?: Array<{ seq: number; beat: 'deploy' | 'pullback' | 'exposure' | 'kicker' }>;
   events: EventLogRecord[];
   /** Nightly machine-audit verdict (spliced by the proxy from the audit-log ref); absent if unreachable. */
   audit?: AuditBlock | null;
