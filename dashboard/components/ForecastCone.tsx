@@ -46,12 +46,17 @@ export function ForecastCone({
 
   const series = forecast.series;
   const floor = floorUsdc ? BigInt(floorUsdc) : null;
+  const t0 = Date.parse(forecast.asOf);
   // The realized path, oldest → newest, clipped to strictly before the forecast's own span so a
-  // duplicated boundary day never draws twice.
-  const realized = (history ?? []).map((h) => ({
-    ms: Date.parse(`${h.date}T00:00:00Z`),
-    v: BigInt(h.companyBalanceUsdc),
-  }));
+  // duplicated boundary day never draws twice. The filter is structural, not an accident of the
+  // sim's midnight-dates-vs-timestamp asOf: a future feed whose history reaches asOf must not
+  // double-draw the boundary day.
+  const realized = (history ?? [])
+    .map((h) => ({
+      ms: Date.parse(`${h.date}T00:00:00Z`),
+      v: BigInt(h.companyBalanceUsdc),
+    }))
+    .filter((r) => r.ms < t0);
   const values = series.flatMap((p) => [BigInt(p.p10), BigInt(p.p90)]);
   for (const r of realized) values.push(r.v);
   if (floor !== null) values.push(floor);
@@ -61,7 +66,6 @@ export function ForecastCone({
   lo -= span / 8n;
   hi += span / 12n;
 
-  const t0 = Date.parse(forecast.asOf);
   const t1 = Date.parse(`${series[series.length - 1]!.date}T00:00:00Z`);
   // With history the x-domain opens at the first realized day — the chart grows as the replay
   // advances. Without it (live mode) the domain starts at asOf, exactly as before.
