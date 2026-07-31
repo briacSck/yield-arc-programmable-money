@@ -66,6 +66,13 @@ export const MANDATE_EVENT_ABI = parseAbi([
   'event Reinstated(address by)',
   'event CompanyFunded(uint256 amount, uint256 newCompanyBalance)',
   'event EmergencyWithdrawal(address to, uint256 amount)',
+  // AgentMandateV2 venue additions — additive: absent from a v1 history, decoded on a v2 one so
+  // the deployed leg (cost basis + shares) reconstructs instead of counting as unknown topics.
+  'event VenueChanged(address indexed venue, address indexed share)',
+  'event VenueSubscribed(bytes32 indexed decisionId, uint256 assetsIn, uint256 sharesMinted)',
+  'event VenueRedeemed(bytes32 indexed decisionId, uint256 sharesBurned, uint256 assetsOut, uint256 assetsRequested)',
+  'event VenueExitFailed(uint256 sharesStranded)',
+  'event TokenRescued(address indexed token, address indexed to, uint256 amount)',
 ]);
 
 export interface FetchOptions {
@@ -197,6 +204,29 @@ function normalize(d: DecodedMandateLog, timestamp: bigint): NormalizedEvent {
       return { ...base, name: 'Reinstated', args: { by: a.by as `0x${string}` } };
     case 'EmergencyWithdrawal':
       return { ...base, name: 'EmergencyWithdrawal', args: { to: a.to as `0x${string}`, amount: a.amount as bigint } };
+    case 'VenueChanged':
+      return { ...base, name: 'VenueChanged', args: { venue: a.venue as `0x${string}`, share: a.share as `0x${string}` } };
+    case 'VenueSubscribed':
+      return {
+        ...base,
+        name: 'VenueSubscribed',
+        args: { decisionId: a.decisionId as `0x${string}`, assetsIn: a.assetsIn as bigint, sharesMinted: a.sharesMinted as bigint },
+      };
+    case 'VenueRedeemed':
+      return {
+        ...base,
+        name: 'VenueRedeemed',
+        args: {
+          decisionId: a.decisionId as `0x${string}`,
+          sharesBurned: a.sharesBurned as bigint,
+          assetsOut: a.assetsOut as bigint,
+          assetsRequested: a.assetsRequested as bigint,
+        },
+      };
+    case 'VenueExitFailed':
+      return { ...base, name: 'VenueExitFailed', args: { sharesStranded: a.sharesStranded as bigint } };
+    case 'TokenRescued':
+      return { ...base, name: 'TokenRescued', args: { token: a.token as `0x${string}`, to: a.to as `0x${string}`, amount: a.amount as bigint } };
     default:
       throw new Error(`unexpected decoded event ${d.eventName}`);
   }

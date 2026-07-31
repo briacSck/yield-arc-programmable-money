@@ -41,6 +41,27 @@ export function renderVerdict(v: Verdict, versionLine?: string): string {
   out.push(`  ${v.totalMoves} on-chain move(s) replayed against 5 invariants`);
   out.push('');
   for (const iv of v.invariants) out.push(line(iv));
+  // Venue-leg reconstruction (AgentMandateV2) — magnitude, not grade; shortfalls on the record.
+  if (v.venue) {
+    const vn = v.venue;
+    const shares = (n: bigint) => `${fmtUsdc(n).slice(1)} share(s)`; // 6-dec like USDC, no $ sign
+    const position =
+      vn.sharesHeld !== 0n
+        ? `holding ${shares(vn.sharesHeld)}, basis ${fmtUsdc(vn.costBasisUsdc)}`
+        : vn.subscriptions > 0
+          ? `position closed, basis ${fmtUsdc(vn.costBasisUsdc)}`
+          : 'no position opened yet';
+    out.push(
+      `  venue     · ${vn.subscriptions} subscription(s) ${fmtUsdc(vn.subscribedUsdc)} in · ` +
+        `${vn.redemptions} redemption(s) ${fmtUsdc(vn.redeemedUsdc)} out — ${position}`,
+    );
+    if (vn.shortfallRedemptions > 0) {
+      out.push(`              ${vn.shortfallRedemptions} redemption(s) settled below request — NAV loss/partial redeem, on the record`);
+    }
+    if (vn.strandedShares > 0n) {
+      out.push(`              ${shares(vn.strandedShares)} stranded by a failed venue exit — recoverable via rescueToken`);
+    }
+  }
   out.push('');
 
   // Enumerate violations loudly (this is the whole product when it fires).
@@ -94,6 +115,19 @@ export function toJson(v: Verdict): string {
         receipt: m.receipt,
         perInvariant: m.perInvariant,
       })),
+      venue: v.venue
+        ? {
+            venueAddress: v.venue.venueAddress,
+            sharesHeld: v.venue.sharesHeld.toString(),
+            costBasisUsdc: v.venue.costBasisUsdc.toString(),
+            subscriptions: v.venue.subscriptions,
+            redemptions: v.venue.redemptions,
+            subscribedUsdc: v.venue.subscribedUsdc.toString(),
+            redeemedUsdc: v.venue.redeemedUsdc.toString(),
+            shortfallRedemptions: v.venue.shortfallRedemptions,
+            strandedShares: v.venue.strandedShares.toString(),
+          }
+        : null,
       notes: v.notes,
     },
     null,

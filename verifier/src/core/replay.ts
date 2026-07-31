@@ -8,6 +8,7 @@ import {
   type NormalizedEvent,
   type Status,
   type Verdict,
+  type VenueVerdict,
   type Violation,
 } from '../types.js';
 
@@ -69,6 +70,32 @@ interface MandateState {
   seededMandate: boolean;
 }
 
+/**
+ * Venue-leg state (AgentMandateV2). The contract emits VenueSubscribed / VenueRedeemed BEFORE the
+ * DecisionExecuted receipt of the same move (AgentMandateV2.sol:320,375,382), so the replay parks
+ * them in `pending*` and joins on decisionId when the receipt arrives. That join is what lets the
+ * replay apply the contract's EXACT basis rule — `positionClosed ? 0 : clamp(basis − credited)` —
+ * instead of the clamp-only approximation the contract doc records as a known divergence.
+ */
+interface VenueState {
+  seen: boolean;
+  address: `0x${string}` | null;
+  share: `0x${string}` | null;
+  shares: bigint;
+  pendingSub: Map<string, { assetsIn: bigint; sharesMinted: bigint }>;
+  pendingRedeem: Map<string, { sharesBurned: bigint; assetsOut: bigint; assetsRequested: bigint; positionClosed: boolean }>;
+  subscriptions: number;
+  redemptions: number;
+  subscribedUsdc: bigint;
+  redeemedUsdc: bigint;
+  shortfallRedemptions: number;
+  strandedShares: bigint;
+  /** Block of the last VenueExitFailed — an EmergencyWithdrawal in the SAME block did not unwind. */
+  exitFailedAtBlock: bigint | null;
+}
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Verdict {
   const notes: string[] = [];
   const st: MandateState = {
@@ -81,6 +108,22 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
     windowDeployed: 0n,
     revoked: false,
     seededMandate: false,
+  };
+
+  const vn: VenueState = {
+    seen: false,
+    address: null,
+    share: null,
+    shares: 0n,
+    pendingSub: new Map(),
+    pendingRedeem: new Map(),
+    subscriptions: 0,
+    redemptions: 0,
+    subscribedUsdc: 0n,
+    redeemedUsdc: 0n,
+    shortfallRedemptions: 0,
+    strandedShares: 0n,
+    exitFailedAtBlock: null,
   };
 
   const vio: Record<InvariantKey, Violation[]> = { floor: [], ticket: [], window: [], asymmetry: [], receipt: [] };
@@ -129,6 +172,16 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
         // Owner exit sweeps both pools; window state is deliberately untouched (contract).
         st.companyBalance = 0n;
         st.deployedBalance = 0n;
+        // v2: the exit try-redeems the whole position first. A VenueExitFailed in the SAME block
+        // means the redeem reverted and the shares are stranded in the contract; otherwise the
+        // position was unwound with the sweep.
+        if (vn.seen && vn.shares !== 0n) {
+          if (vn.exitFailedAtBlock === ev.blockNumber) {
+            vn.strandedShares = vn.shares;
+          } else {
+            vn.shares = 0n;
+          }
+        }
         break;
       }
       case 'Revoked': {
@@ -137,6 +190,76 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
       }
       case 'Reinstated': {
         st.revoked = false;
+        break;
+      }
+      case 'VenueChanged': {
+        vn.seen = true;
+        // The contract refuses a re-point over an open position (VenueBusy) — seeing one anyway
+        // means a nonconforming implementation. Loud note, same precedent as reconstruction drift.
+        if (vn.shares !== 0n) {
+          notes.push(
+            `venue re-pointed at ${ev.blockNumber}:${ev.logIndex} while ${vn.shares} share(s) held — the contract forbids this (VenueBusy); nonconforming implementation or incomplete event stream.`,
+          );
+        }
+        vn.address = ev.args.venue.toLowerCase() === ZERO_ADDRESS ? null : ev.args.venue;
+        vn.share = ev.args.share.toLowerCase() === ZERO_ADDRESS ? null : ev.args.share;
+        break;
+      }
+      case 'VenueSubscribed': {
+        vn.seen = true;
+        vn.subscriptions += 1;
+        vn.subscribedUsdc += ev.args.assetsIn;
+        vn.shares += ev.args.sharesMinted;
+        // The contract reverts VenueMintedNothing on a zero mint — minuting one is nonconforming.
+        if (ev.args.sharesMinted === 0n) {
+          notes.push(
+            `VenueSubscribed at ${ev.blockNumber}:${ev.logIndex} minted 0 shares for ${fmt(ev.args.assetsIn)} — the contract reverts VenueMintedNothing; nonconforming implementation.`,
+          );
+        }
+        vn.pendingSub.set(ev.args.decisionId.toLowerCase(), {
+          assetsIn: ev.args.assetsIn,
+          sharesMinted: ev.args.sharesMinted,
+        });
+        break;
+      }
+      case 'VenueRedeemed': {
+        vn.seen = true;
+        vn.redemptions += 1;
+        vn.redeemedUsdc += ev.args.assetsOut;
+        if (ev.args.sharesBurned > vn.shares) {
+          notes.push(
+            `VenueRedeemed at ${ev.blockNumber}:${ev.logIndex} burned ${ev.args.sharesBurned} share(s) but only ${vn.shares} were held — reconstruction drift; event stream may be incomplete.`,
+          );
+          vn.shares = 0n;
+        } else {
+          vn.shares -= ev.args.sharesBurned;
+        }
+        // NAV shortfall / partial redeem: settled below what was asked. Honest accounting, not a
+        // violation — the contract credits what ARRIVED and the receipt carries that same number.
+        if (ev.args.assetsOut < ev.args.assetsRequested) vn.shortfallRedemptions += 1;
+        vn.pendingRedeem.set(ev.args.decisionId.toLowerCase(), {
+          sharesBurned: ev.args.sharesBurned,
+          assetsOut: ev.args.assetsOut,
+          assetsRequested: ev.args.assetsRequested,
+          positionClosed: vn.shares === 0n,
+        });
+        break;
+      }
+      case 'VenueExitFailed': {
+        vn.seen = true;
+        vn.exitFailedAtBlock = ev.blockNumber;
+        notes.push(
+          `venue exit FAILED at ${ev.blockNumber}:${ev.logIndex} — ${ev.args.sharesStranded} share(s) stranded in the contract; owner recovers them via rescueToken.`,
+        );
+        break;
+      }
+      case 'TokenRescued': {
+        // Rescuing the venue's share token moves stranded shares out of the contract.
+        if (vn.share !== null && ev.args.token.toLowerCase() === vn.share.toLowerCase()) {
+          const out = ev.args.amount > vn.shares ? vn.shares : ev.args.amount;
+          vn.shares -= out;
+          vn.strandedShares = vn.strandedShares > out ? vn.strandedShares - out : 0n;
+        }
         break;
       }
       case 'DecisionExecuted': {
@@ -243,6 +366,23 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
           st.companyBalance -= amount;
           st.deployedBalance += amount;
 
+          // Venue cross-check: a DEPLOY under an active venue subscribes exactly `amount`
+          // (AgentMandateV2.sol:314) and emits VenueSubscribed with the same decisionId in the
+          // same tx. The receipt amount stays authoritative for pool reconstruction either way.
+          const sub = vn.pendingSub.get(decisionId.toLowerCase());
+          if (sub) {
+            if (sub.assetsIn !== amount) {
+              notes.push(
+                `VenueSubscribed.assetsIn=${fmt(sub.assetsIn)} ≠ DEPLOY receipt ${fmt(amount)} for ${decisionId} at ${ev.blockNumber} — the contract subscribes exactly the deposited amount; nonconforming implementation.`,
+              );
+            }
+            vn.pendingSub.delete(decisionId.toLowerCase());
+          } else if (vn.address !== null) {
+            notes.push(
+              `DEPLOY ${decisionId} at ${ev.blockNumber} under an active venue with no VenueSubscribed — funds did not reach the venue; nonconforming implementation or incomplete event stream.`,
+            );
+          }
+
           const headroom = st.companyBalance - st.floor;
           if (closest === null || headroom < closest) {
             closest = headroom;
@@ -263,7 +403,27 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
           withdrawals += 1;
           // Withdraw is ungated by design (fail-safe) — it can never violate floor/ticket/window/
           // asymmetry. The only check that applies is the receipt (done above). Reconstruct pools.
-          st.deployedBalance = st.deployedBalance >= amount ? st.deployedBalance - amount : 0n;
+          //
+          // Basis rule: with a VenueRedeemed join, apply the contract's EXACT rule — a full unwind
+          // retires the basis (a shortfall left over after a loss is a REALISED loss, not a claim,
+          // AgentMandateV2.sol:380). Without one (v1 / escrow mode), the amount-clamp is the rule.
+          const red = vn.pendingRedeem.get(decisionId.toLowerCase());
+          if (red) {
+            if (red.assetsOut !== amount) {
+              notes.push(
+                `VenueRedeemed.assetsOut=${fmt(red.assetsOut)} ≠ WITHDRAW receipt ${fmt(amount)} for ${decisionId} at ${ev.blockNumber} — the receipt must carry what actually settled; nonconforming implementation.`,
+              );
+            }
+            st.deployedBalance = red.positionClosed ? 0n : st.deployedBalance >= amount ? st.deployedBalance - amount : 0n;
+            vn.pendingRedeem.delete(decisionId.toLowerCase());
+          } else {
+            if (vn.address !== null && vn.shares !== 0n) {
+              notes.push(
+                `WITHDRAW ${decisionId} at ${ev.blockNumber} under an active venue position with no VenueRedeemed — proceeds did not come from the venue; nonconforming implementation or incomplete event stream.`,
+              );
+            }
+            st.deployedBalance = st.deployedBalance >= amount ? st.deployedBalance - amount : 0n;
+          }
           st.companyBalance += amount;
           moves.push({
             decisionId,
@@ -285,6 +445,29 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
   if (!st.seededMandate) {
     notes.push('no MandateChanged seen — history does not start at the mandate deploy block; verdict may be incomplete.');
   }
+
+  // A venue event whose decisionId never got its DecisionExecuted receipt is contract-impossible
+  // (they are emitted in the same call) — surface it rather than silently dropping it.
+  for (const id of vn.pendingSub.keys()) {
+    notes.push(`VenueSubscribed ${id} has no matching DEPLOY receipt — contract-impossible; event stream may be incomplete.`);
+  }
+  for (const id of vn.pendingRedeem.keys()) {
+    notes.push(`VenueRedeemed ${id} has no matching WITHDRAW receipt — contract-impossible; event stream may be incomplete.`);
+  }
+
+  const venue: VenueVerdict | null = vn.seen
+    ? {
+        venueAddress: vn.address,
+        sharesHeld: vn.shares,
+        costBasisUsdc: st.deployedBalance,
+        subscriptions: vn.subscriptions,
+        redemptions: vn.redemptions,
+        subscribedUsdc: vn.subscribedUsdc,
+        redeemedUsdc: vn.redeemedUsdc,
+        shortfallRedemptions: vn.shortfallRedemptions,
+        strandedShares: vn.strandedShares,
+      }
+    : null;
 
   // Count MOVES that failed each check (not raw violations — receipt can log >1 per move, e.g. a
   // duplicate decisionId, which would drive a naive "clean = total − violations" negative).
@@ -327,6 +510,7 @@ export function replay(events: NormalizedEvent[], opts: ReplayOptions = {}): Ver
     moves,
     closestApproachToFloorUsdc: closest,
     closestApproachAt: closestAt,
+    venue,
     source: opts.source ?? 'fixture',
     notes,
   };

@@ -49,6 +49,20 @@ function hydrate(raw: any): NormalizedEvent[] {
         return { ...base, name: 'Reinstated', args: { by: a.by } };
       case 'EmergencyWithdrawal':
         return { ...base, name: 'EmergencyWithdrawal', args: { to: a.to, amount: BigInt(a.amount) } };
+      case 'VenueChanged':
+        return { ...base, name: 'VenueChanged', args: { venue: a.venue, share: a.share } };
+      case 'VenueSubscribed':
+        return { ...base, name: 'VenueSubscribed', args: { decisionId: a.decisionId, assetsIn: BigInt(a.assetsIn), sharesMinted: BigInt(a.sharesMinted) } };
+      case 'VenueRedeemed':
+        return {
+          ...base,
+          name: 'VenueRedeemed',
+          args: { decisionId: a.decisionId, sharesBurned: BigInt(a.sharesBurned), assetsOut: BigInt(a.assetsOut), assetsRequested: BigInt(a.assetsRequested) },
+        };
+      case 'VenueExitFailed':
+        return { ...base, name: 'VenueExitFailed', args: { sharesStranded: BigInt(a.sharesStranded) } };
+      case 'TokenRescued':
+        return { ...base, name: 'TokenRescued', args: { token: a.token, to: a.to, amount: BigInt(a.amount) } };
       default:
         throw new Error(`fixture ${raw._name}: unknown event ${e.name}`);
     }
