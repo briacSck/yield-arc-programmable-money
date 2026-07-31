@@ -348,6 +348,80 @@ button:focus-visible {
   color: var(--mute-2);
   margin-left: auto;
 }
+
+/* The timeline scrubber: the 90-day track with the four scripted chapters as clickable
+   tick-marks. Labels sit BELOW the track so the row keeps one visual baseline. */
+.scrub {
+  flex: 1 1 220px;
+  min-width: 180px;
+  padding: 6px 6px 28px;
+  cursor: pointer;
+  align-self: center;
+}
+.scrub__track {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.scrub__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.scrub__beat {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--mute-2);
+  background: var(--surface);
+  padding: 0;
+  cursor: pointer;
+}
+.scrub__beat--past {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.scrub__beat--now {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.scrub__beat:hover {
+  border-color: var(--accent);
+}
+.scrub__beatlabel {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.scrub__beat--past .scrub__beatlabel,
+.scrub__beat--now .scrub__beatlabel {
+  color: var(--accent);
+}
+.scrub__beatlabel--alt {
+  top: 24px;
+}
+
+/* The kicker's one-shot pulse — sage, never red: the mandate WORKING is the punchline. */
+@keyframes rowflash {
+  0% { background: var(--accent-bg); }
+  55% { background: var(--accent-bg); }
+  100% { background: transparent; }
+}
+.log-row--flash {
+  animation: rowflash 2.4s ease-out 1;
+}
 .demo-simtx {
   font-size: 12px;
   color: var(--mute);
@@ -729,4 +803,7 @@ button:focus-visible {
   .playbar { margin-top: 6px; padding: 5px 8px; gap: 8px; }
   .playbar__btn { padding: 4px 9px; }
   .playbar__hint { display: none; }
+  /* Chapter labels don't fit at phone width; the tick-marks stay tappable. */
+  .scrub { flex-basis: 120px; min-width: 100px; padding-bottom: 6px; }
+  .scrub__beatlabel { display: none; }
 }
