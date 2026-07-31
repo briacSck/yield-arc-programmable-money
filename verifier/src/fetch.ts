@@ -26,18 +26,35 @@ import type { NormalizedEvent } from './types.js';
  *  rate-limit ~1 req/s; dRPC, the pool's first entry, serves concurrency). */
 const CONCURRENCY = 10;
 
-/** Run `fn` over `items` with at most `concurrency` in flight. Rejects if any task rejects. */
-async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
+/**
+ * Run `fn` over `items` with at most `concurrency` in flight. Rejects with the FIRST error — but
+ * only after every worker has settled. `Promise.all` here would reject immediately and orphan the
+ * sibling workers' later rejections as unhandled (under RPC-retry exhaustion that crashed the
+ * process on the exit path instead of honoring the documented exit-2 contract — DX defect X2).
+ * Exported for the regression test only.
+ */
+export async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
   const queue = [...items];
+  let firstError: unknown;
+  let failed = false;
   await Promise.all(
     Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
       for (;;) {
+        if (failed) return; // stop pulling new work once anything failed
         const item = queue.shift();
         if (item === undefined) return;
-        await fn(item);
+        try {
+          await fn(item);
+        } catch (err) {
+          if (!failed) {
+            failed = true;
+            firstError = err;
+          }
+        }
       }
     }),
   );
+  if (failed) throw firstError;
 }
 
 export const MANDATE_EVENT_ABI = parseAbi([

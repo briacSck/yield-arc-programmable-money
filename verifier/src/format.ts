@@ -30,7 +30,7 @@ function line(iv: InvariantVerdict): string {
   return `  ${LABEL[iv.key]} · ${iv.status.padEnd(9)} — ${iv.detail}`;
 }
 
-export function renderVerdict(v: Verdict): string {
+export function renderVerdict(v: Verdict, versionLine?: string): string {
   const out: string[] = [];
   const src = v.source === 'fixture' ? 'FIXTURE' : 'LIVE CHAIN';
   out.push('');
@@ -62,6 +62,9 @@ export function renderVerdict(v: Verdict): string {
   if (v.source === 'chain') {
     out.push(`  Live audit: ${DASHBOARD_URL}  ·  Contract: ${EXPLORER_ADDRESS_BASE}${v.mandateAddress}`);
   }
+  // Part of the screenshot-able footer (X5): a verdict you can't tie to a verifier version isn't
+  // reproducible.
+  if (versionLine) out.push(`  ${versionLine}`);
   out.push('');
   return out.join('\n');
 }

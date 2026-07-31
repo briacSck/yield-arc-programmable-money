@@ -1,5 +1,6 @@
-// The shebang is added by the esbuild bundle banner (see package.json build) so it lands on line 1
+// The shebang is added by the esbuild bundle banner (see scripts/build.mjs) so it lands on line 1
 // of dist/cli.js exactly once. Kept out of source to avoid a double-shebang in the bundle.
+import { readFileSync } from 'node:fs';
 import { replay } from './core/replay.js';
 import { fetchHistory } from './fetch.js';
 import { loadFixture, FIXTURE_NAMES, type FixtureName } from './fixtures.js';
@@ -12,8 +13,54 @@ import {
 } from './config.js';
 import type { Verdict } from './types.js';
 
-/** Bumped with releases; printed in verdicts + the terminal footer for reproducibility. */
-const VERIFIER_VERSION = '0.1.0';
+/**
+ * Version is single-sourced from package.json (X5) — `../package.json` resolves both from
+ * `src/cli.ts` under tsx and from the bundled `dist/cli.js` inside the published package.
+ */
+const VERIFIER_VERSION: string = (() => {
+  try {
+    return (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+  } catch {
+    return '0.0.0+unknown';
+  }
+})();
+
+/** Injected by scripts/build.mjs at bundle time; GITHUB_SHA covers CI tsx runs; 'dev' otherwise. */
+declare const __VERIFIER_COMMIT__: string | undefined;
+const VERIFIER_COMMIT: string =
+  typeof __VERIFIER_COMMIT__ === 'string'
+    ? __VERIFIER_COMMIT__
+    : process.env.GITHUB_SHA?.slice(0, 7) ?? 'dev';
+
+/** One-line cause for error output — viem's message can be a multi-line wall of status/URL/body. */
+function summarizeError(err: unknown): string {
+  const e = err as { shortMessage?: string; details?: string; message?: string };
+  let line = e.shortMessage ?? String(e.message ?? err).split('\n').find((l) => l.trim()) ?? 'unknown error';
+  if (e.shortMessage && e.details) line += ` — ${e.details.split('\n')[0]}`;
+  return line.length > 200 ? line.slice(0, 199) + '…' : line;
+}
+
+/**
+ * X2: the exit-code contract is enforced at the PROCESS level. Under RPC-retry exhaustion a late
+ * async failure could crash the process on the exit path (libuv assert, exit 127) instead of the
+ * documented exit 2 — and the nightly CI keys "operational, don't publish" off exit 2. Any error
+ * that escapes main()'s own handling is by definition operational: nothing was proven either way.
+ */
+let exiting = false;
+function operationalExit(err: unknown): void {
+  if (exiting) return;
+  exiting = true;
+  process.stderr.write(
+    `\n  error: the scan could not complete — this is infrastructure, not a violation.\n` +
+      `  Nothing was proven or disproven either way.\n\n` +
+      `  cause: ${summarizeError(err)}\n\n` +
+      `  Fix: retry, pass --rpc <url>, or run offline: npx -y @yield-cfo/mandate-verify --fixture live-snapshot\n` +
+      `  Live nightly audit: ${DASHBOARD_URL}\n\n`,
+  );
+  process.exit(2);
+}
+process.on('uncaughtException', operationalExit);
+process.on('unhandledRejection', operationalExit);
 
 /**
  * The judge's first touch (§18.2c). Zero-config: `npx -y @yield-cfo/mandate-verify` verifies
@@ -138,10 +185,12 @@ async function main(): Promise<number> {
         },
       });
     } catch (err) {
-      // RPC/chain failure = operational, NOT a violation. Nothing was proven either way.
+      // RPC/chain failure = operational, NOT a violation. Doctrine FIRST, one-line cause second
+      // (X3) — never viem's wall of status/URL/body before the judge learns nothing is wrong.
       process.stderr.write(
-        `\n  error: ${(err as Error).message}\n` +
-          `  Nothing was proven or disproven — this is infrastructure, not a violation.\n` +
+        `\n  error: the chain scan could not complete — this is infrastructure, not a violation.\n` +
+          `  Nothing was proven or disproven either way.\n\n` +
+          `  cause: ${summarizeError(err)}\n\n` +
           `  Fix: retry, pass --rpc <url>, or run offline: npx -y @yield-cfo/mandate-verify --fixture live-snapshot\n` +
           `  Live nightly audit: ${DASHBOARD_URL}\n\n`,
       );
@@ -179,17 +228,16 @@ async function main(): Promise<number> {
     const record = JSON.parse(toJson(verdict)) as Record<string, unknown>;
     record.runAt = new Date().toISOString();
     record.version = `mandate-verify@${VERIFIER_VERSION}`;
+    record.commit = VERIFIER_COMMIT;
     process.stdout.write(JSON.stringify(record, null, 2) + '\n');
   } else {
-    process.stdout.write(renderVerdict(verdict));
+    // X5: the verdict a judge screenshots carries the verifier's identity — reproducibility.
+    process.stdout.write(renderVerdict(verdict, `mandate-verify v${VERIFIER_VERSION} (${VERIFIER_COMMIT})`));
   }
   return verdict.compliant ? 0 : 1;
 }
 
 main().then(
   (code) => process.exit(code),
-  (err) => {
-    process.stderr.write(`\n  fatal: ${(err as Error).stack ?? err}\n\n`);
-    process.exit(2);
-  },
+  (err) => operationalExit(err),
 );
