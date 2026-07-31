@@ -1,5 +1,13 @@
 # Publishing `@yield-cfo/mandate-verify` — CTO handoff
 
+> **Interim publish SHIPPED 2026-07-31:** the `npm pack` tarball is attached to
+> [GitHub Release v0.1.0](https://github.com/briacSck/yield-arc-programmable-money/releases/tag/v0.1.0)
+> and the front-page judge command now uses `npx -y <tarball-url>` — verified working (live exits 0,
+> `--fixture naive-agent` exits 1 with 13 violations). The npm-registry publish below is still worth
+> doing (short command + provenance + green badges), but it is no longer a judge-path blocker.
+> Note: the release tag is `v0.1.0`, chosen deliberately NOT to match the `verifier-v*` pattern so
+> it would not trigger `release-verifier.yml` before `NPM_TOKEN` exists.
+
 The package is **fully built and ready**. This is only about npm auth (the interactive `npm login`
 web flow kept expiring its CLI callback before browser 2FA completed — a token sidesteps it).
 Everything is on branch `feat/verifier`. Name `@yield-cfo/mandate-verify` is unclaimed (first publish).

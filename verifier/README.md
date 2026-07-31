@@ -7,8 +7,12 @@
 **Replay a YIELD `AgentMandate`'s full on-chain history and machine-check every move against its five invariants — in one command, zero config.**
 
 ```bash
-npx -y @yield-cfo/mandate-verify
+npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz
 ```
+
+(That is the [v0.1.0 release](https://github.com/briacSck/yield-arc-programmable-money/releases/tag/v0.1.0)
+tarball, built with `npm pack` from this directory. The short form `npx -y @yield-cfo/mandate-verify`
+activates once the npm registry publish lands — see `PUBLISH.md`.)
 
 No args, no env, no prompts: it verifies YIELD's **live** mandate on Arc testnet
 ([`0x856bec6f…c782b4`](https://testnet.arcscan.app/address/0x856bec6faadd61b583430e0cd22ec2e211c782b4)),
@@ -35,17 +39,20 @@ and re-derives the exact predicate the contract enforced at each move.
 ## Try it
 
 ```bash
+# The judge command, spelled out once — same tarball for every variant below
+VERIFY="npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz"
+
 # Verify the live mandate (the judge command)
-npx -y @yield-cfo/mandate-verify
+$VERIFY
 
 # See a violating agent fail the same audit — the negative demo
-npx -y @yield-cfo/mandate-verify --fixture naive-agent      # exits 1, 13 violations
+$VERIFY --fixture naive-agent      # exits 1, 13 violations
 
 # Offline: verify a committed snapshot of YIELD's real history (works behind any firewall)
-npx -y @yield-cfo/mandate-verify --fixture live-snapshot
+$VERIFY --fixture live-snapshot
 
 # Machine-readable verdict
-npx -y @yield-cfo/mandate-verify --json
+$VERIFY --json
 ```
 
 ### Exit codes
