@@ -53,12 +53,14 @@ jobs:
       - name: Cold-run the packed tarball from an empty temp dir
         # House rule: never validate the judge path from inside the repo. This runs the exact
         # artifact a tag would publish, with no checkout and no workspace node_modules in reach.
+        # NB: `npx -y <local-path>.tgz` executes the FILE as a command (exit 126) — unlike a URL,
+        # a local tarball must go through --package with the bin named explicitly.
         run: |
           set -euo pipefail
           cd "$(mktemp -d)"
-          npx -y "${{ steps.pack.outputs.tgz }}" --fixture live-snapshot
+          npx -y --package "${{ steps.pack.outputs.tgz }}" mandate-verify --fixture live-snapshot
           set +e
-          npx -y "${{ steps.pack.outputs.tgz }}" --fixture naive-agent
+          npx -y --package "${{ steps.pack.outputs.tgz }}" mandate-verify --fixture naive-agent
           code=$?
           set -e
           if [ "$code" -ne 1 ]; then
