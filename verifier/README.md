@@ -1,6 +1,7 @@
 # @yield-cfo/mandate-verify
 
-[![npm](https://img.shields.io/npm/v/@yield-cfo/mandate-verify?color=2a5547)](https://www.npmjs.com/package/@yield-cfo/mandate-verify)
+<!-- The npm badge returns when the package is published — until then it resolves against a
+     package that does not exist and renders as an error (same call as the root README). -->
 [![nightly audit](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml/badge.svg)](https://github.com/briacSck/yield-arc-programmable-money/actions/workflows/nightly-audit.yml)
 
 **Replay a YIELD `AgentMandate`'s full on-chain history and machine-check every move against its five invariants — in one command, zero config.**

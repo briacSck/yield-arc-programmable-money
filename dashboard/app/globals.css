@@ -176,7 +176,8 @@ button:focus-visible {
 /* Decision log rows */
 .log-row {
   display: grid;
-  grid-template-columns: 128px 92px 1fr auto;
+  /* The kind cell holds up to "WITHDRAW 12,000 USDC" at demo scale — a fixed 92px wrapped it. */
+  grid-template-columns: 128px minmax(92px, max-content) 1fr auto;
   gap: 14px;
   padding: 12px 0;
   border-bottom: 1px solid var(--line-2);
@@ -674,3 +675,50 @@ button:focus-visible {
 /* The forecast-held slice: above the floor, but the forecast says it is needed before the horizon
    ends. Without it the bar calls money "spare" that the agent refuses to deploy. */
 .seg--held { background: var(--warn-bg); }
+
+/* ── Cold-visitor tagline (under the header, above the owner surface) ────── */
+.tagline {
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--mute);
+  max-width: 74ch;
+}
+.tagline__links {
+  display: block;
+  margin-top: 6px;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+.tagline__links a {
+  color: var(--mute);
+  text-decoration: underline;
+}
+.tagline__links a:hover { color: var(--ink); }
+.chip--link {
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip--link:hover { color: var(--ink); border-color: var(--ink); }
+
+/* Judge-runnable commands must survive narrow viewports: the GitHub URL inside them is one
+   unbreakable token, and an overflowing <code> scrolls the whole page sideways on a phone. */
+.scoreboard__verify code,
+.drill__verify code {
+  overflow-wrap: anywhere;
+}
+
+/* ── Phone-width demo chrome ─────────────────────────────────────────────
+   The full banner + playbar pinned ~220px of a 375px-wide viewport. The chrome STAYS sticky
+   (the disclosure must ride every screenshot, and sticky-on-a-child would stop at its parent's
+   bounds) — it just compresses: one-line banner, compact playbar, no hint. ~85px pinned. */
+.banner-demo__short { display: none; }
+@media (max-width: 620px) {
+  .demo-chrome { padding: 6px 0 4px; }
+  .banner-demo { font-size: 12px; padding: 7px 10px; }
+  .banner-demo__full { display: none; }
+  .banner-demo__short { display: inline; }
+  .playbar { margin-top: 6px; padding: 5px 8px; gap: 8px; }
+  .playbar__btn { padding: 4px 9px; }
+  .playbar__hint { display: none; }
+}

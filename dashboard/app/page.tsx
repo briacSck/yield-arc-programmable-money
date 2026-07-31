@@ -9,6 +9,7 @@ import { ForecastCone } from '../components/ForecastCone';
 import { OwnerMode } from '../components/OwnerMode';
 import { demoEventsAt, isDemoRequested } from '../lib/demo';
 import { ARCSCAN, REPO_URL, daysSince, shortHash, usdc, when } from '../lib/format';
+import { dayMonth } from '../lib/owner';
 
 const POLL_MS = 30_000;
 
@@ -68,7 +69,8 @@ function LiveApp() {
         <Header revoked={false} agentId="" mode={null} demo={false} />
         <div className="empty">
           The agent&apos;s feed is unreachable right now ({error}). The on-chain record is unaffected —
-          retrying automatically.
+          retrying automatically. Meanwhile,{' '}
+          <a href="/?demo=90d">watch a full simulated quarter →</a> (client-side, needs no feed).
         </div>
       </main>
     );
@@ -125,8 +127,16 @@ function DemoApp() {
           {/* Persistent and unmissable, by design: sticky, full-width, amber, no dismissal. Any
               screenshot of this replay carries the disclosure with it. */}
           <div className="banner-demo" role="alert">
-            <strong>SYNTHETIC 90-DAY SIMULATION</strong> — seeded ledger, modelled mandate, simulated
-            wheat index. Not YIELD&apos;s live history. <a href="/">watch the live agent →</a>
+            {/* Same disclosure at two lengths: the full sentence on desktop, one line on phones —
+                where the sticky chrome was eating half the viewport. The short form still names
+                the simulation; the disclosure NEVER disappears. */}
+            <span className="banner-demo__full">
+              <strong>SYNTHETIC 90-DAY SIMULATION</strong> — seeded ledger, modelled mandate, simulated
+              wheat index. Not YIELD&apos;s live history. <a href="/">watch the live agent →</a>
+            </span>
+            <span className="banner-demo__short">
+              <strong>SYNTHETIC SIMULATION</strong> — not live history. <a href="/">live agent →</a>
+            </span>
           </div>
           <div className="playbar" role="group" aria-label="Simulation playback controls">
             <button className="btn playbar__btn" onClick={() => (atEnd ? restart() : setPlaying(!playing))}>
@@ -145,7 +155,7 @@ function DemoApp() {
             <span className="playbar__day mono">
               day {day}/{total}
             </span>
-            <span className="playbar__hint">1 second ≈ 1 simulated day</span>
+            <span className="playbar__hint">1 second ≈ {speed} simulated day{speed > 1 ? 's' : ''}</span>
           </div>
         </div>
       }
@@ -192,10 +202,47 @@ function Screen({
       {chrome}
       <Header revoked={revoked} agentId={data.agentIdentityId} mode={data.schedulerMode} demo={demo} />
 
+      {/* The 10-second answer for a cold visitor, above the owner surface: what this is, what
+          bounds it, where the proof lives. The owner never needed it; a judge does. */}
+      <p className="tagline">
+        An autonomous CFO for a small business — it forecasts the cash, keeps the owner&apos;s
+        safety floor, puts the surplus to work and pulls it back before payroll, bounded by an
+        on-chain mandate it provably cannot exceed (Circle Wallets · Arc · machine-audited nightly).
+        <span className="tagline__links">
+          <a href={REPO_URL} target="_blank" rel="noreferrer">repo</a>
+          {!demo && (
+            <>
+              {' · '}
+              <a href={`${ARCSCAN}/address/${data.mandateAddress}`} target="_blank" rel="noreferrer">mandate contract</a>
+              {' · '}
+              <a href={`${REPO_URL}/tree/main/verifier`} target="_blank" rel="noreferrer">verifier</a>
+              {' · '}
+              <a href="/?demo=90d">90-day simulation</a>
+            </>
+          )}
+          {demo && (
+            <>
+              {' · '}
+              <a href="/">the live agent</a>
+            </>
+          )}
+        </span>
+      </p>
+
       {revoked && (
         <div className="banner-revoked">
-          You paused your agent. It cannot move money out of your account; anything already working
-          for you can still come back. You can restart it whenever you like.
+          {demo ? (
+            <>
+              The owner pulled the plug mid-quarter — and the mandate enforced it: the agent&apos;s
+              next deposit was refused (the BLOCKED line in the log below). Money already set aside
+              can still come back; the pause belongs to the owner, not the agent.
+            </>
+          ) : (
+            <>
+              You paused your agent. It cannot move money out of your account; anything already
+              working for you can still come back. You can restart it whenever you like.
+            </>
+          )}
         </div>
       )}
 
@@ -251,8 +298,19 @@ function Screen({
             <div className="stat__label">{demo ? 'simulated moves' : 'on-chain decisions'}</div>
           </div>
           <div className="stat">
-            <div className="stat__num">{stats.cycles}</div>
-            <div className="stat__label">forecast cycles</div>
+            {demo ? (
+              <>
+                {/* Not a duplicate of "days replayed" (one cycle per sim day): the demo's third
+                    number is the differentiator — how often the mandate refused the agent. */}
+                <div className="stat__num">{events.filter((e) => e.status === 'FAILED' && /revok|mandate enforced/i.test(e.error ?? '')).length}</div>
+                <div className="stat__label">deposits blocked by the mandate</div>
+              </>
+            ) : (
+              <>
+                <div className="stat__num">{stats.cycles}</div>
+                <div className="stat__label">forecast cycles</div>
+              </>
+            )}
           </div>
           <div className="stat">
             {/* Hero wiring (§18.2): the page's first number is machine-attested when the nightly
@@ -282,7 +340,9 @@ function Screen({
       {/* The ledger horizon */}
       <section className="section">
         <div className="section__head">
-          <h2>30-day cash horizon — P10–P90, safe floor, and every move the agent made</h2>
+          {/* "Recent", not "every": the cone is forward-looking and only carries markers near its
+              asOf window — claiming the full history here would overclaim what the chart shows. */}
+          <h2>30-day cash horizon — P10–P90, safe floor, and the agent&apos;s recent moves</h2>
           <span className="eyebrow">
             {demo
               ? data.latestForecast
@@ -343,7 +403,9 @@ function Screen({
                 <dt>Company pool</dt>
                 <dd>{usdc(mandate.companyBalanceUsdc)}</dd>
                 {/* "Set aside", not "in yield": v1 escrows this pool, it does not earn. The
-                    venue-aware v2 (0xd41d…2f70) is deployed and awaits its USYC allowlist role. */}
+                    venue-aware v2 (0xd41d…2f70) has its USYC roles granted and venue set
+                    (2026-07-31) but holds no position and is not this page's feed — this page
+                    renders v1, so the vocabulary stays escrow. */}
                 <dt>Set aside (escrow)</dt>
                 <dd>{usdc(mandate.deployedUsdc)}</dd>
                 <dt>Safe floor (hard)</dt>
@@ -423,6 +485,7 @@ function Footer({ data, demo }: { data: EventsResponse; demo: boolean }) {
       <a href={`${ARCSCAN}/address/${data.identityRegistry}`} target="_blank" rel="noreferrer">
         ERC-8004 registry
       </a>
+      <a href="/?demo=90d">watch a simulated quarter →</a>
     </footer>
   );
 }
@@ -450,7 +513,14 @@ function Header({
           {revoked ? 'agent paused' : 'agent working'}
         </span>
         {agentId && <span className="chip">ERC-8004 agent #{agentId}</span>}
-        {mode && <span className={`chip ${mode === 'trade' ? 'chip--active' : ''}`}>{mode} mode</span>}
+        {/* "trade mode" is worker vocabulary; on the sim replay it is hardcoded and meaningless,
+            so the chip is live-only. */}
+        {mode && !demo && <span className={`chip ${mode === 'trade' ? 'chip--active' : ''}`}>{mode} mode</span>}
+        {!demo && (
+          <a className="chip chip--link" href="/?demo=90d" title="the same product replaying a deterministic 90-day scenario, client-side">
+            ▶ 90-day simulation
+          </a>
+        )}
       </span>
     </header>
   );
@@ -553,7 +623,8 @@ function LogRow({
 
   return (
     <div className={`log-row${isMove ? ' log-row--move' : ' log-row--quiet'}`}>
-      <span className="log-row__ts">{demo ? record.loggedAt.slice(0, 10) : when(record.loggedAt)}</span>
+      {/* Sim rows read "14 May" like the owner surface, not raw ISO — one date language per page. */}
+      <span className="log-row__ts">{demo ? dayMonth(record.loggedAt.slice(0, 10)) : when(record.loggedAt)}</span>
       <span className={`kind ${kindClass}`}>
         {isBlockedByMandate ? 'BLOCKED' : isFailed ? 'FAILED' : decision.kind}
         {isMove ? ` ${usdc(decision.amountUsdc)}` : ''}

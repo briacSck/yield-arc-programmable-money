@@ -616,7 +616,7 @@ function ActivityRow({
           </span>
           <span className="owner-action__amt">{eurFrom(action.amountBaseUnits, { scale })}</span>
         </span>
-        <span className="owner-action__meta">{demo ? action.at.slice(0, 10) : when(action.at)}</span>
+        <span className="owner-action__meta">{demo ? dayMonth(action.at.slice(0, 10)) : when(action.at)}</span>
       </button>
 
       {open && (

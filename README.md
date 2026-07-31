@@ -42,6 +42,10 @@ alert which would have caught it now fires.
 - **Live dashboard:** https://dashboard-production-abea.up.railway.app — every decision, its
   reason sentence, and its on-chain receipt, with explorer links, plus a **machine-audit
   scoreboard**: 5 invariant chips checked nightly by the verifier.
+- **The 90-second version:** [the same product replaying a full simulated quarter](https://dashboard-production-abea.up.railway.app/?demo=90d)
+  (`?demo=90d`) — deploy, pull-back before a crunch, a commodity shock, and the owner revoking
+  mid-quarter with the mandate blocking the agent's next move. Loudly labelled a simulation; it
+  never fabricates audit verdicts or explorer links.
 - **The mandate (on-chain):** [`0x856bec6faadd61b583430e0cd22ec2e211c782b4`](https://testnet.arcscan.app/address/0x856bec6faadd61b583430e0cd22ec2e211c782b4)
   — floor, per-ticket cap, 24h budget, owner-revocable.
 - **Agent identity:** ERC-8004 agentId `850878` · agent wallet [`0x93d9…ab7c`](https://testnet.arcscan.app/address/0x93d9c11c8e9e23e1e97e855668a27a14accaab7c)
@@ -53,7 +57,8 @@ alert which would have caught it now fires.
   or live: [Check it yourself](#check-it-yourself--four-rungs-offline-first).
 
 Built on: **Circle Wallets** (developer-controlled, MPC) · **Circle Contracts (SCP)** ·
-**native-USDC gas on Arc** · **ERC-8004 identity** · ERC-8183 (agent-to-agent settlement, W3).
+**native-USDC gas on Arc** · **ERC-8004 identity** · **USYC** (tokenized MMF, the yield venue
+behind `AgentMandateV2`).
 
 ## The trust stack
 
@@ -103,7 +108,11 @@ owner's brief, "can I afford it?", proof-in-place drill-downs), working owner co
 the company's Circle wallet behind a passphrase gate, the verifier + nightly audit, and the
 venue-aware `AgentMandateV2`
 ([`0xd41d…2f70`](https://testnet.arcscan.app/address/0xd41d3648c71641fb2801415726787d5728492f70),
-deployed alongside v1, escrow-only until its USYC allowlist role is granted). Positioning and
+deployed alongside v1). On Jul 31 Circle granted v2 **both USYC allowlist roles** (verified
+against the Teller's `RolesAuthority`) and the owner
+[set the venue](https://testnet.arcscan.app/tx/0x00e6ed513c23e74404d7d484d699ec3ff271b20ad23235b2c7235e930a20b37c)
+to the USYC Teller — v2's deployed leg now routes into the tokenized MMF (no position opened yet;
+v1 keeps the live record). Positioning and
 where this goes: `docs/THESIS.md`. Build invariants for humans and AI agents: `AGENTS.md`; live
 state: `docs/NOW.md`; deferred items: `TODOS.md`.
 
@@ -114,7 +123,7 @@ firewall, and it is the one that still answers if the public Arc endpoints are r
 
 | | What | Cost | If it fails |
 |---|---|---|---|
-| **0** | Watch it: [the live dashboard](https://dashboard-production-abea.up.railway.app) | 0 s | — |
+| **0** | Watch it: [the live dashboard](https://dashboard-production-abea.up.railway.app) · or [a full simulated quarter in 90 s](https://dashboard-production-abea.up.railway.app/?demo=90d) | 0 s | — |
 | **1** | **Offline proof**, no network once installed: `git clone … && cd yield-arc-programmable-money && npm install`, then `npx tsx verifier/src/cli.ts --fixture live-snapshot` (exits 0) and `--fixture naive-agent` (a rogue agent, **13 violations, exits 1**) | ~15 s install, ~1 s run | nothing to fail |
 | **2** | **Live history**: `npx tsx verifier/src/cli.ts` — replays every move the agent ever made against all five invariants | ~6 s | falls back to rung 1, exit code 2 |
 | **3** | **Read it**: the entire invariant logic is `verifier/src/core/replay.ts`, zero I/O. Then `npm test -w verifier` | ~2 s | — |
@@ -130,7 +139,7 @@ operational problem, nothing proven either way.
 ```bash
 npm install
 npm run typecheck
-npm run test          # 175 tests across 6 workspaces
+npm run test          # 209 tests across 6 workspaces
 ```
 
 Contracts (Hardhat 3 — **must run on x64**; there is no `solidity-analyzer` build for Windows
@@ -152,8 +161,10 @@ one that says where it stopped:
 - **StableFX auto-conversion** — the FX exposure is real and is written up in the standard draft.
   Automating a swap we do not yet need would be motion, not progress.
 - **A second ERC implementer** — one recruited in a week is a friend doing us a favour.
+- **ERC-8183 agent-to-agent settlement** — promised in our first checkpoint blurb, honestly
+  unbuilt. The named first use when it lands: the CFO agent paying the underwriter its premium.
 - **French UI** — the product's market is French; this audience is not.
 
 ## License
 
-MIT (see `verifier/package.json`; the rest of the repo follows).
+MIT — see [`LICENSE`](LICENSE).
