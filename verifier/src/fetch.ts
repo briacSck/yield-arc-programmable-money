@@ -26,18 +26,37 @@ import type { NormalizedEvent } from './types.js';
  *  rate-limit ~1 req/s; dRPC, the pool's first entry, serves concurrency). */
 const CONCURRENCY = 10;
 
-/** Run `fn` over `items` with at most `concurrency` in flight. Rejects if any task rejects. */
-async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
+/**
+ * Run `fn` over `items` with at most `concurrency` in flight. Rejects with the FIRST error — but
+ * only after every worker has settled, so no in-flight worker is abandoned mid-request. (The old
+ * `Promise.all` shape did subscribe to every worker, so sibling rejections were not unhandled; the
+ * observed exit-127 crash under RPC-retry exhaustion — DX defect X2 — escaped somewhere below
+ * viem's retry path and was never precisely pinned. The process-level handlers in cli.ts are the
+ * exit-2 contract's backstop; this settle-all shape is hygiene, not the fix.)
+ * Exported for the contract test only.
+ */
+export async function runPool<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
   const queue = [...items];
+  let firstError: unknown;
+  let failed = false;
   await Promise.all(
     Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
       for (;;) {
+        if (failed) return; // stop pulling new work once anything failed
         const item = queue.shift();
         if (item === undefined) return;
-        await fn(item);
+        try {
+          await fn(item);
+        } catch (err) {
+          if (!failed) {
+            failed = true;
+            firstError = err;
+          }
+        }
       }
     }),
   );
+  if (failed) throw firstError;
 }
 
 export const MANDATE_EVENT_ABI = parseAbi([
