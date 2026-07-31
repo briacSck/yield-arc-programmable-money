@@ -33,7 +33,7 @@ git tag verifier-v0.1.0 && git push origin verifier-v0.1.0
 ## Verify it worked
 
 ```bash
-npx -y @yield-cfo/mandate-verify              # live chain, 5/5 COMPLIANT in ~3s
+npx -y @yield-cfo/mandate-verify              # live chain, 5/5 COMPLIANT in ~6s
 npx -y @yield-cfo/mandate-verify --fixture naive-agent   # negative demo, exits 1
 ```
 

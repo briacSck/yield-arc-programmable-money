@@ -4,7 +4,32 @@
 > `docs/PLAN.md`, never here). Updated at every standup (owner: whoever ran standup). Every session
 > starts by reading it; every session that changes state updates it in the same PR.
 
-_Last updated: 2026-07-28 PM (the endgame day — product live, owner controls live, v2 deployed)_
+_Last updated: 2026-07-31 (USYC unlocked — v2 venue SET; handoff shipped; docs truth sweep)_
+
+## 2026-07-31 — USYC unlocked, roles split, judge-layer sprint begins
+
+- **Circle granted AgentMandateV2 BOTH USYC roles** (`Teller.deposit` + hold-share), verified via
+  `RolesAuthority.canCall` — the corrected check; the `0x…deadbeef` control still reads
+  not-permitted. Re-check: `npx tsx agent/scripts/check-usyc-permission.ts 0xd41d…2f70`.
+- **`setVenue(USYC Teller)` EXECUTED by the owner** and read-back verified
+  ([tx](https://testnet.arcscan.app/tx/0x00e6ed513c23e74404d7d484d699ec3ff271b20ad23235b2c7235e930a20b37c)),
+  via the new `agent/scripts/set-venue.ts` (preflight + execute). v2's deployed leg now routes
+  USDC→USYC. **No position opened yet; worker + nightly audit still point at v1** — the v1→v2
+  switch is a deliberate open decision (recommend: not before freeze).
+- **Gate on yield claims:** the verifier has zero venue awareness (`VenueSubscribed`/`VenueRedeemed`
+  unmodelled) — until that lands (issue #23), no surface may say "machine-verified" about yield.
+- **Endgame roles split**: engineering workstreams → Vadim (`docs/HANDOFF-VADIM.md`, PR #20,
+  issues #21–#27) · deck + video + one-pager → Sara (from `THESIS.md` §5) · docs/copy polish →
+  this PR · npm token / CP2 confirmation / broker + Akoneo emails → Briac.
+- **Docs truth sweep (this PR)**: LICENSE committed (MIT, decided by Briac — the README's one hard
+  overclaim closed) · test counts reconciled (209 across 6 workspaces, verifier 20) · stale "~3s"
+  verify claims → measured ~6s everywhere · ERC-8183 moved from "Built on" to the honest
+  didn't-build list · `contracts/README.md` rewritten off the SweepEscrow era · broken npm badge
+  removed from `verifier/README.md` · `?demo=90d` now discoverable (README rung 0, header chip,
+  footer, feed-error fallback) · film-set copy fixes (demo revocation banner, dates, speed hint,
+  duplicate stat → deposits-blocked, favicon + OG metadata, mobile banner).
+
+_Previous: 2026-07-28 PM (the endgame day — product live, owner controls live, v2 deployed)_
 
 ## 2026-07-28 — endgame day (PRs #11–#16, all merged; `main` green; 243 tests)
 

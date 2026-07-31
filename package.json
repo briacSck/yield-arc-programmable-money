@@ -2,6 +2,7 @@
   "name": "yield-agentic-cfo",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "YIELD — Agentic CFO on Arc. An autonomous treasury agent that forecasts cash and manages USDC yield under a verifiable on-chain identity and mandate.",
   "type": "module",
   "engines": {
