@@ -77,6 +77,14 @@ $VERIFY --json
 `--address` is first-class: the verifier is not hard-wired to the author's deployment — any agent
 under the same mandate interface can be audited.
 
+## Implementing your own mandate
+
+The verifier takes `--address` and `--deploy-block`, so it audits **any** conforming deployment —
+not just YIELD's. [`IMPLEMENTERS.md`](./IMPLEMENTERS.md) is the conformance guide: the interface,
+the five invariants stated normatively (including the exact lazy-tumbling-window algorithm and the
+`decisionId` derivation), and the fixture files that serve as **normative conformance vectors** —
+implement the interface, run one command, and your mandate is held to the same audit as ours.
+
 ## Trust ladder
 
 The audience is precisely people who think about trust, so nothing here asks for any:
