@@ -38,8 +38,10 @@ test('X2 · runPool settles every worker and rejects with the first error (no un
   process.on('unhandledRejection', onUnhandled);
   try {
     const settled: number[] = [];
-    // 6 items, concurrency 3: items 1 and 3 fail at staggered delays. Under the old Promise.all
-    // shape the second rejection became unhandled and could crash the process on the exit path.
+    // 6 items, concurrency 3: items 1 and 3 fail at staggered delays. This pins the pool's
+    // CONTRACT (settle everything, then reject with the first error) — it is not a regression pin
+    // for the X2 exit-127 crash, whose exact escape path below viem's retries was never pinned;
+    // the process-level handlers in cli.ts are what guarantee exit 2 there.
     await assert.rejects(
       runPool([0, 1, 2, 3, 4, 5], 3, async (i) => {
         await new Promise((r) => setTimeout(r, i * 10));
