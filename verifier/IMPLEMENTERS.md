@@ -6,8 +6,9 @@ configured for Arc testnet), and one command machine-checks your deployment's fu
 the same five invariants YIELD's live mandate is held to:
 
 ```bash
+# from a clone, after `npm install`:
 npx tsx verifier/src/cli.ts --address 0xYourMandate --deploy-block <constructor block>
-# or, no clone:
+# or cold, no clone at all:
 npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz \
   --address 0xYourMandate --deploy-block <constructor block>
 ```
@@ -123,9 +124,9 @@ the fixture wins.
 
 | Vector | File | Expected verdict |
 |---|---|---|
-| **Violating, one per invariant** — floor breach, ticket breach, 24h-window burst, deposit-while-revoked, non-deriving `decisionId`, duplicate `decisionId` | [`verifier/src/core/replay.test.ts`](src/core/replay.test.ts) (`VIOLATION ·` cases — hand-written `NormalizedEvent[]` streams the frozen reference contract can no longer emit; that is their point) | each is CAUGHT (exit 1) |
+| **Violating, one per invariant** — floor breach, ticket breach, 24h-window burst, deposit-while-revoked, non-deriving `decisionId` | [`verifier/src/core/replay.test.ts`](src/core/replay.test.ts) (`VIOLATION ·` cases — hand-written `NormalizedEvent[]` streams the frozen reference contract can no longer emit; that is their point) | each is CAUGHT (exit 1) |
 | **Compliant-adversarial** — histories a naive verifier falsely flags: balance exactly `== floor`; cap exactly filled; the legal 2× burst straddling a window boundary; a deposit one second before the boundary; `setMandate` mid-window (re-versions, no reset); `emergencyWithdrawAll` → re-fund → deposit (window carried); revoke → withdraw → reinstate → deposit; multiple deposits in one block | [`verifier/src/core/replay.test.ts`](src/core/replay.test.ts) (`OK ·` cases) | NOT flagged (exit 0) |
-| **The negative demo** — a naive unbounded agent violating everything | [`verifier/fixtures/naive-agent.json`](fixtures/naive-agent.json) (run it: `--fixture naive-agent`) | 13 violations, exit 1 |
+| **The negative demo** — a naive unbounded agent violating everything, including the duplicate-`decisionId` replay guard (block 20) | [`verifier/fixtures/naive-agent.json`](fixtures/naive-agent.json) (run it: `--fixture naive-agent`) | 13 violations, exit 1 |
 | **Live-history golden** — the reference deployment's real history at a pinned block | [`verifier/fixtures/`](fixtures/) `live-history-*.json` (run it: `--fixture live-snapshot`) | COMPLIANT, exit 0 |
 
 To run the whole suite against your changes: `npm test -w verifier`.
