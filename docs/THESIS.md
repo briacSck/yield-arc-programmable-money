@@ -89,8 +89,10 @@ inverts the usual take that the EU is where autonomy goes to die.
   underway", never "imminent".
 - "Agentic CFO" currently demonstrates the **treasurer leg plus one CFO moment** (the what-if).
   Scope the claim; show the road.
-- The demo's set-aside pool **does not earn yet** — v2 is deployed and the venue awaits its
-  allowlist role. Until `setVenue`, escrow-only, and we say so on the screen itself.
+- The demo's set-aside pool **does not earn yet** — v2 has its USYC roles granted and the venue
+  set (2026-07-31), but no position is opened and the live page renders v1's escrow. "Earns" waits
+  for a real venue deposit; "machine-verified yield" additionally waits for the venue-aware
+  verifier (issue #23). We say so on the screen itself.
 - A mandate with caps/expiry/scope/revocation is **not novel** (ERC-8226 has it all). Stake the
   liability-derived floor only.
 - Never mix euros with attested on-chain figures in one glance; the machine verdict stays in
