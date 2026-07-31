@@ -23,6 +23,47 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  # The FRONT-PAGE command: the Release v0.1.0 tarball via npx, byte-for-byte what the README
+  # prints — run from a machine with NO checkout at all (stricter than the clone job below).
+  # Guards against a deleted/renamed release asset, a stale bundle inside the tarball, and the
+  # local-npx false positive that started this whole class of bug.
+  tarball:
+    runs-on: ubuntu-latest
+    env:
+      VERIFY: npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Front page — offline snapshot must exit 0
+        run: $VERIFY --fixture live-snapshot
+
+      - name: Front page — the rogue agent must exit 1 (the tool working, not failing)
+        run: |
+          set +e
+          $VERIFY --fixture naive-agent
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::naive-agent via the release tarball must exit 1 (a real violation). Got $code."
+            exit 1
+          fi
+
+      - name: Front page — the live run must not report a violation
+        run: |
+          set +e
+          $VERIFY
+          code=$?
+          set -e
+          if [ "$code" -eq 1 ]; then
+            echo "::error::the live history reported a VIOLATION."
+            exit 1
+          fi
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::live run hit an operational error (exit 2) — infrastructure, not a violation."
+          fi
+
   judge:
     runs-on: ubuntu-latest
     steps:
