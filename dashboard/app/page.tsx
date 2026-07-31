@@ -359,6 +359,7 @@ function Screen({
           moves={moves}
           revoked={revoked}
           revokedAt={revokedAt}
+          history={data.history ?? null}
         />
       </section>
 

@@ -96,6 +96,9 @@ export function demoEventsAt(config: SimConfig, ticks: SimTick[], day: number): 
       loggedAt: tick.decision.ts,
       forecast: tick.forecast,
     },
+    // The realized balance path up to today — the cone's solid history line, so the signature
+    // chart grows day by day during the replay instead of sitting near-static.
+    history: upToToday.map((t) => ({ date: t.date, companyBalanceUsdc: t.companyBalanceUsdc })),
     events: upToToday.map(toEventRecord),
     // NEVER an audit block in demo mode: the verifier did not check these moves, so the page must
     // render its honest fallbacks ("awaiting the next nightly audit", no scoreboard).
