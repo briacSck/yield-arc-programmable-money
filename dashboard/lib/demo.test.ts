@@ -73,6 +73,20 @@ test('history: one realized balance point per elapsed day, in tick order', () =>
   }
 });
 
+// ── The beat chapters (scrubber + kicker flash) ───────────────────────────
+
+test('beats: tick.beat maps through the adapter, keyed by seq, only for elapsed days', () => {
+  const full = demoEventsAt(config, ticks, ticks.length);
+  const expected = ticks.filter((t) => t.beat).map((t) => ({ seq: t.day, beat: t.beat! }));
+  assert.equal(expected.length, 4, 'the scenario scripts exactly four beats');
+  assert.deepEqual(full.beats, expected);
+  for (const b of expected) {
+    if (b.seq <= 1) continue; // a day-1 beat has no "day before" (the adapter clamps to day 1)
+    const dayBefore = demoEventsAt(config, ticks, b.seq - 1);
+    assert.ok(!dayBefore.beats?.some((x) => x.seq === b.seq), `beat ${b.beat} leaked before its day`);
+  }
+});
+
 // ── The kicker renders honestly ───────────────────────────────────────────
 
 test('a revoked day renders revoked, and the kicker is a mandate-enforced refusal', () => {
