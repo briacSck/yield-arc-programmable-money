@@ -8,14 +8,23 @@
  * deposit) without an anvil that couldn't reproduce Arc semantics anyway (§17.7).
  */
 
-/** The six mandate events, normalized. `args` is per-event; see the discriminated union below. */
+/**
+ * The mandate events, normalized. The first six are v1's fixed ABI; the rest are AgentMandateV2's
+ * venue additions — additive: a v1 history simply never contains them, and every invariant verdict
+ * is computed identically with or without them. `args` is per-event; see the union below.
+ */
 export type EventName =
   | 'MandateChanged'
   | 'CompanyFunded'
   | 'DecisionExecuted'
   | 'Revoked'
   | 'Reinstated'
-  | 'EmergencyWithdrawal';
+  | 'EmergencyWithdrawal'
+  | 'VenueChanged'
+  | 'VenueSubscribed'
+  | 'VenueRedeemed'
+  | 'VenueExitFailed'
+  | 'TokenRescued';
 
 /** Ordering key. Arc has sub-second blocks that can share a timestamp — order by (block, logIndex),
  *  NEVER by timestamp (arc-docs: "use block number as your ordering key"). */
@@ -39,6 +48,14 @@ export type NormalizedEvent = EventPosition &
     | { name: 'Revoked'; args: { by: `0x${string}` } }
     | { name: 'Reinstated'; args: { by: `0x${string}` } }
     | { name: 'EmergencyWithdrawal'; args: { to: `0x${string}`; amount: bigint } }
+    | { name: 'VenueChanged'; args: { venue: `0x${string}`; share: `0x${string}` } }
+    | { name: 'VenueSubscribed'; args: { decisionId: `0x${string}`; assetsIn: bigint; sharesMinted: bigint } }
+    | {
+        name: 'VenueRedeemed';
+        args: { decisionId: `0x${string}`; sharesBurned: bigint; assetsOut: bigint; assetsRequested: bigint };
+      }
+    | { name: 'VenueExitFailed'; args: { sharesStranded: bigint } }
+    | { name: 'TokenRescued'; args: { token: `0x${string}`; to: `0x${string}`; amount: bigint } }
   );
 
 /** DecisionExecuted.kind mirrors the app-layer DecisionKind (AgentMandate.sol). */
@@ -84,6 +101,35 @@ export interface MoveVerdict {
   perInvariant: Record<InvariantKey, Status>;
 }
 
+/**
+ * Venue-leg reconstruction (AgentMandateV2) — deployed-leg = COST BASIS + SHARES, replayed with
+ * the contract's exact rules (including basis-zeroing on a full unwind, which the amount-clamp
+ * approximation cannot see). `null` on a history with no venue events (v1, or v2 pre-setVenue).
+ *
+ * This section REPORTS the venue economics and cross-checks them against the receipts; it never
+ * flips `compliant` — the five invariants stay the standard. Contract-impossible inconsistencies
+ * (a VenueSubscribed that doesn't match its DEPLOY receipt, a venue re-point over an open
+ * position) surface loudly in `notes`, same precedent as the CompanyFunded reconstruction checksum.
+ */
+export interface VenueVerdict {
+  /** Venue in force at the end of the replay (last VenueChanged), or null if unset/cleared. */
+  venueAddress: `0x${string}` | null;
+  /** Reconstructed share position at the end of the replay. */
+  sharesHeld: bigint;
+  /** Reconstructed USDC cost basis of the venue position (the contract's `deployedBalance`). */
+  costBasisUsdc: bigint;
+  subscriptions: number;
+  redemptions: number;
+  /** Σ VenueSubscribed.assetsIn — USDC that actually entered the venue. */
+  subscribedUsdc: bigint;
+  /** Σ VenueRedeemed.assetsOut — USDC that actually came back. */
+  redeemedUsdc: bigint;
+  /** Redemptions that settled BELOW what was requested (NAV loss / partial redeem) — reported, never hidden. */
+  shortfallRedemptions: number;
+  /** Shares stranded by a failed emergency venue exit (VenueExitFailed), net of rescues. */
+  strandedShares: bigint;
+}
+
 /** The whole-history verdict — what the CLI prints and `--json` emits. */
 export interface Verdict {
   schemaVersion: 1;
@@ -107,6 +153,8 @@ export interface Verdict {
   /** Free reconstruction stat that makes all-green read as live, not hardcoded. */
   closestApproachToFloorUsdc: bigint | null;
   closestApproachAt: { blockNumber: bigint; decisionId: `0x${string}` } | null;
+  /** Venue-leg reconstruction (AgentMandateV2); null when the history carries no venue events. */
+  venue: VenueVerdict | null;
   source: 'chain' | 'fixture';
   notes: string[];
 }
