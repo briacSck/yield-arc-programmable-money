@@ -131,8 +131,15 @@ firewall, and it is the one that still answers if the public Arc endpoints are r
 Exit codes are a contract: **0** compliant · **1** a real violation (the tool working) · **2** an
 operational problem, nothing proven either way.
 
-> **`npx -y @yield-cfo/mandate-verify` is not live yet.** The package is built and ready but not
-> published, so that command 404s today. Use the clone path above until this note disappears.
+> **The one-liner is live** — no clone needed, straight from the [v0.1.0 release](https://github.com/briacSck/yield-arc-programmable-money/releases/tag/v0.1.0) tarball:
+>
+> ```bash
+> npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz
+> ```
+>
+> Add `--fixture naive-agent` for the negative demo (a rogue agent — 13 violations, exits 1).
+> The short form `npx -y @yield-cfo/mandate-verify` activates once the npm registry publish lands
+> (auth-only; `verifier/PUBLISH.md`).
 
 ## Developing
 

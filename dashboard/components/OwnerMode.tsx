@@ -662,16 +662,16 @@ function ActivityRow({
             </dd>
           </dl>
           {/* The command printed here MUST be one that runs on a machine that has never seen this
-              repo. `npx -y @yield-cfo/mandate-verify` does not: the package is not published yet,
-              so it 404s for everyone. It reads as working from inside the repo only because npx
-              resolves the workspace symlink first. Swap it back the moment publish lands. */}
+              repo. `npx -y @yield-cfo/mandate-verify` does not until the npm-registry publish
+              lands (it 404s for everyone outside the workspace) — the Release v0.1.0 tarball URL
+              does. Swap to the short form the moment publish lands. */}
           <p className="drill__verify">
             {demo ? (
               <>Nothing to verify here: this move settled nowhere. The live agent&apos;s record is the one the verifier checks.</>
             ) : (
               <>
                 Check it yourself, against the chain, not against us:{' '}
-                <code>git clone {REPO_URL} && cd yield-arc-programmable-money && npm install && npx tsx verifier/src/cli.ts</code>
+                <code>npx -y {REPO_URL}/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz</code>
               </>
             )}
           </p>

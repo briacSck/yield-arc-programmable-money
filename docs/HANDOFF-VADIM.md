@@ -45,12 +45,19 @@ pre-Demo-Day) — ask Briac to send them, but nothing below depends on reading t
   verified: `venue` = Teller, `venueShare` = `0xe918…b86C`):
   <https://testnet.arcscan.app/tx/0x00e6ed513c23e74404d7d484d699ec3ff271b20ad23235b2c7235e930a20b37c>
   v2's DEPLOY leg now routes USDC→USYC shares. **v1 stays the live story.**
-- npm: `@yield-cfo/mandate-verify@0.1.0` never published, name unclaimed, no git tag. Blocked only
-  on Briac's token. The README's front-page `npx` command 404s today (it says so itself).
+- npm: `@yield-cfo/mandate-verify@0.1.0` not on the registry yet (blocked only on Briac's token),
+  BUT the judge command is **live as of 2026-07-31** via the tarball route: tag `v0.1.0` +
+  [GitHub Release](https://github.com/briacSck/yield-arc-programmable-money/releases/tag/v0.1.0)
+  with the `npm pack` tarball attached; front-page README now prints
+  `npx -y <release-tarball-url>` and it verifies live 5/5 (fixture `naive-agent` exits 1, 13
+  violations — both verified from a clean directory). Workstream 1's core is DONE; its two
+  sub-items (release-workflow dry-run job, judge-command.yml from empty temp dir) remain yours.
 
 ## Your workstreams, in priority order
 
 ### 1. Un-break the judge command today (no npm creds needed) — ~0.5 d
+**STATUS 2026-07-31: core DONE (tarball released, front-page command swapped and verified from a
+clean dir). Remaining for you: sub-items (a) and (b) below.**
 The single highest-leverage item in the repo. `npx -y` accepts **tarball URLs**:
 `npm pack` the verifier → attach the `.tgz` to a GitHub Release → swap the front-page command to
 `npx -y https://github.com/<org>/<repo>/releases/download/<tag>/<file>.tgz` and delete the
