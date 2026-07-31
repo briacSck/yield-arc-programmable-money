@@ -90,12 +90,26 @@ export function OwnerMode({
   // tell an owner their agent is paused when it is not — the one lie this product cannot afford.
   const [pending, setPending] = useState<OwnerActionName | null>(null);
   const [confirmingPause, setConfirmingPause] = useState(false);
+  // A missing passphrase renders an INLINE styled prompt (`.owner-confirm` family) at the action
+  // that needs it, instead of the browser-chrome `window.prompt` a judge would see on "Pause".
+  // The action + its params are parked here and re-fired on submit.
+  const [passphraseFor, setPassphraseFor] = useState<{ action: OwnerActionName; extra: Record<string, string> } | null>(null);
   // Both are tagged with the action they belong to, so a failed pause can never render as a red
   // line under the floor slider (or the reverse).
   const [actionError, setActionError] = useState<{ action: OwnerActionName; message: string } | null>(null);
   const [lastAction, setLastAction] = useState<{ action: OwnerActionName; txHash: string; explorerUrl: string } | null>(
     null,
   );
+
+  /** The inline prompt's submit: cache the passphrase, close the prompt, re-fire the parked action. */
+  function submitPassphrase(pass: string) {
+    const parked = passphraseFor;
+    const trimmed = pass.trim();
+    if (!parked || !trimmed) return;
+    window.localStorage.setItem(OWNER_PASS_KEY, trimmed);
+    setPassphraseFor(null);
+    void runOwnerAction(parked.action, parked.extra);
+  }
 
   async function runOwnerAction(action: OwnerActionName, extra: Record<string, string> = {}) {
     // ?demo=90d replays a synthetic history — an owner action fired from inside it would still hit
@@ -109,20 +123,13 @@ export function OwnerMode({
       // The owner proves it is them. Held in this browser only; compared on the server, so it is
       // never in the page source. Without this the proxy would attach the worker secret for ANY
       // caller — a public URL that pauses a live agent.
-      let pass = window.localStorage.getItem(OWNER_PASS_KEY) ?? '';
+      const pass = window.localStorage.getItem(OWNER_PASS_KEY) ?? '';
       if (!pass) {
-        pass = (
-          window.prompt(
-            action === 'appetite'
-              ? 'Owner passphrase — this changes how your agent works your cash.'
-              : 'Owner passphrase — this action moves real money on-chain.',
-          ) ?? ''
-        ).trim();
-        if (!pass) {
-          setPending(null);
-          return;
-        }
-        window.localStorage.setItem(OWNER_PASS_KEY, pass);
+        // No cached passphrase: park the action and render the inline prompt where the owner is
+        // looking. Submitting caches the passphrase and re-fires this exact action.
+        setPassphraseFor({ action, extra });
+        setPending(null);
+        return;
       }
 
       const res = await fetch('/api/owner', {
@@ -320,6 +327,9 @@ export function OwnerMode({
                 </div>
               </div>
             )}
+            {passphraseFor?.action === 'appetite' && (
+              <PassphrasePrompt action="appetite" onSubmit={submitPassphrase} onCancel={() => setPassphraseFor(null)} />
+            )}
             <ActionFeedback
               error={actionError?.action === 'appetite' ? actionError.message : null}
               result={lastAction?.action === 'appetite' ? lastAction : null}
@@ -354,6 +364,9 @@ export function OwnerMode({
                     : 'Previewing only. Applying writes a real transaction to your mandate on-chain — from then on the contract itself refuses anything that would cross it.'}
                 </div>
               </div>
+            )}
+            {passphraseFor?.action === 'floor' && (
+              <PassphrasePrompt action="floor" onSubmit={submitPassphrase} onCancel={() => setPassphraseFor(null)} />
             )}
             <ActionFeedback
               error={actionError?.action === 'floor' ? actionError.message : null}
@@ -437,6 +450,13 @@ export function OwnerMode({
               ? 'Disabled in the simulation: this button pauses the REAL agent with a real on-chain transaction. In the replay, watch the owner do it — the mandate blocks the agent on the day it happens.'
               : 'Runs as a real transaction on your mandate, signed by your company wallet. In this demo it is protected by a shared secret rather than a wallet sign-in.'}
           </div>
+          {passphraseFor && (passphraseFor.action === 'pause' || passphraseFor.action === 'resume') && (
+            <PassphrasePrompt
+              action={passphraseFor.action}
+              onSubmit={submitPassphrase}
+              onCancel={() => setPassphraseFor(null)}
+            />
+          )}
           <ActionFeedback
             error={
               actionError && (actionError.action === 'pause' || actionError.action === 'resume')
@@ -484,6 +504,58 @@ export function OwnerMode({
  * over — on a screen whose entire claim is that it reports rather than reassures, a swallowed
  * error is the worst possible bug.
  */
+/**
+ * Inline owner-passphrase prompt — replaces the browser-chrome `window.prompt` a judge used to see
+ * on their first "Pause". Same `.owner-confirm` family as the pause confirmation; the passphrase is
+ * cached in this browser only and checked on the server.
+ */
+function PassphrasePrompt({
+  action,
+  onSubmit,
+  onCancel,
+}: {
+  action: OwnerActionName;
+  onSubmit: (pass: string) => void;
+  onCancel: () => void;
+}) {
+  const [pass, setPass] = useState('');
+  return (
+    <div className="owner-confirm owner-confirm--pass">
+      <div className="owner-confirm__q">Owner passphrase</div>
+      <p className="owner-confirm__body">
+        {action === 'appetite'
+          ? 'This changes how your agent works your cash.'
+          : 'This action moves real money on-chain.'}{' '}
+        The passphrase stays in this browser and is checked by the server.
+      </p>
+      <form
+        className="owner-confirm__row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (pass.trim()) onSubmit(pass);
+        }}
+      >
+        <input
+          className="owner-pass__input"
+          type="password"
+          autoFocus
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          placeholder="passphrase"
+          aria-label="Owner passphrase"
+          autoComplete="current-password"
+        />
+        <button className="btn btn--primary" type="submit" disabled={!pass.trim()}>
+          Confirm
+        </button>
+        <button className="linklike" type="button" onClick={onCancel}>
+          cancel
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ActionFeedback({
   error,
   result,

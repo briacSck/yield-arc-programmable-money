@@ -19,7 +19,7 @@ test('GUARD: every whitelisted fixture resolves to a file that loads', () => {
 });
 
 /**
- * Golden test — YIELD's real on-chain history at a fixed snapshot (block 53950410, 2026-07-27)
+ * Golden test — YIELD's real on-chain history at a fixed snapshot (block 54645259, 2026-07-31)
  * must verify COMPLIANT with the exact move/invariant counts. This is the one test that catches
  * Arc-RPC decode surprises and a regression in the replay core against REAL data, not synthetic
  * fixtures. When the live history grows, refresh the snapshot (`npm run snapshot -w verifier`)
@@ -31,7 +31,7 @@ test('golden · YIELD live snapshot verifies 5/5 COMPLIANT', () => {
   const v = replay(fx.events, { mandateAddress: fx.mandateAddress, chainId: fx.chainId, deployBlock: fx.deployBlock, source: 'fixture' });
 
   assert.equal(v.compliant, true, 'live history must be compliant by construction');
-  assert.equal(v.totalMoves, 7, '3 DEPLOY + 4 WITHDRAW at this snapshot');
+  assert.equal(v.totalMoves, 8, '4 DEPLOY + 4 WITHDRAW at this snapshot');
   for (const iv of v.invariants) {
     assert.equal(iv.status, 'PASS', `${iv.key} must PASS on live history — got ${iv.status}`);
     assert.equal(iv.violations.length, 0);

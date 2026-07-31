@@ -314,3 +314,41 @@ describe('worker /owner/* — actions', () => {
     assert.deepEqual(body.events, []);
   });
 });
+
+describe('GET /forecasts — the receipt-preimage disclosure route', () => {
+  const HASH = `0x${'12'.repeat(32)}`;
+  const SNAPSHOT = {
+    decisionId: 'dec-1',
+    loggedAt: '2026-07-31T00:00:00.000Z',
+    forecast: { inputsHash: HASH },
+    inputs: { note: 'canonical baseline inputs' },
+  };
+  const store = {
+    latest: () => null,
+    byInputsHash: (h: string) => (h.toLowerCase() === HASH ? SNAPSHOT : null),
+  } as unknown as ForecastStore;
+
+  it('serves the snapshot whose forecast committed the hash', async () => {
+    const { port } = await withServer({ forecastStore: store });
+    const res = await fetch(`http://127.0.0.1:${port}/forecasts?inputsHash=${HASH}`);
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as typeof SNAPSHOT;
+    assert.equal(body.decisionId, 'dec-1');
+    assert.equal(body.forecast.inputsHash, HASH);
+    assert.deepEqual(body.inputs, SNAPSHOT.inputs);
+  });
+
+  it('404s an unknown hash without inventing anything', async () => {
+    const { port } = await withServer({ forecastStore: store });
+    const res = await fetch(`http://127.0.0.1:${port}/forecasts?inputsHash=0x${'ff'.repeat(32)}`);
+    assert.equal(res.status, 404);
+  });
+
+  it('400s a malformed key before it ever reaches the store', async () => {
+    const { port } = await withServer({ forecastStore: store });
+    for (const bad of ['', 'nope', '0x1234', `0x${'gg'.repeat(32)}`]) {
+      const res = await fetch(`http://127.0.0.1:${port}/forecasts?inputsHash=${encodeURIComponent(bad)}`);
+      assert.equal(res.status, 400, `"${bad}" must be refused`);
+    }
+  });
+});
