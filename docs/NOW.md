@@ -16,8 +16,15 @@ _Last updated: 2026-07-31 (USYC unlocked — v2 venue SET; handoff shipped; docs
   via the new `agent/scripts/set-venue.ts` (preflight + execute). v2's deployed leg now routes
   USDC→USYC. **No position opened yet; worker + nightly audit still point at v1** — the v1→v2
   switch is a deliberate open decision (recommend: not before freeze).
-- **Gate on yield claims:** the verifier has zero venue awareness (`VenueSubscribed`/`VenueRedeemed`
-  unmodelled) — until that lands (issue #23), no surface may say "machine-verified" about yield.
+- **Gate on yield claims — LIFTED the same night (all three conditions met):** (1) the
+  venue-aware verifier merged (PR #34); (2) Briac ran the **real proof cycle** through the v2
+  mandate — [fundCompany 4](https://testnet.arcscan.app/tx/0x9da58e1c01a10fa835018702662e5273ac4bcb07c6e60264037d6c07e845e0a7)
+  · [deposit 1 USDC → 882,613 shares](https://testnet.arcscan.app/tx/0x4c590ec3295c7efe5ec40feffea6069ebac4a83d62f7a49fa5b25dedf71b6e6b)
+  · [redeem → 0.99971 USDC](https://testnet.arcscan.app/tx/0xeb782c177eba22f403225c58653b58048b7d64bea94ba311d35fed0436a07981)
+  (NAV delta −0.00029, on the record); (3) the verifier **machine-verified it from chain**:
+  COMPLIANT 2×5, venue leg reconstructed ($1 in · $0.99971 out · position closed, basis $0,
+  shortfall noted). Surfaces may now claim machine-verified yield **for the round-trip**; a
+  standing earning position still deliberately waits (worker stays on v1 through the freeze).
 - **Endgame roles split**: engineering workstreams → Vadim (`docs/HANDOFF-VADIM.md`, PR #20,
   issues #21–#27) · deck + video + one-pager → Sara (from `THESIS.md` §5) · docs/copy polish →
   this PR · npm token / CP2 confirmation / broker + Akoneo emails → Briac.

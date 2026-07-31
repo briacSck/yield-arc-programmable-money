@@ -109,10 +109,16 @@ the company's Circle wallet behind a passphrase gate, the verifier + nightly aud
 venue-aware `AgentMandateV2`
 ([`0xd41d…2f70`](https://testnet.arcscan.app/address/0xd41d3648c71641fb2801415726787d5728492f70),
 deployed alongside v1). On Jul 31 Circle granted v2 **both USYC allowlist roles** (verified
-against the Teller's `RolesAuthority`) and the owner
+against the Teller's `RolesAuthority`), the owner
 [set the venue](https://testnet.arcscan.app/tx/0x00e6ed513c23e74404d7d484d699ec3ff271b20ad23235b2c7235e930a20b37c)
-to the USYC Teller — v2's deployed leg now routes into the tokenized MMF (no position opened yet;
-v1 keeps the live record). Positioning and
+to the USYC Teller, and the same day the **full yield round-trip ran through the mandate and was
+machine-verified**: [deposit 1 USDC → 882,613 USYC shares](https://testnet.arcscan.app/tx/0x4c590ec3295c7efe5ec40feffea6069ebac4a83d62f7a49fa5b25dedf71b6e6b)
+→ [redeem 0.99971 USDC](https://testnet.arcscan.app/tx/0xeb782c177eba22f403225c58653b58048b7d64bea94ba311d35fed0436a07981),
+the −0.00029 NAV delta on the record, sign and all. The venue-aware verifier replays it
+**COMPLIANT 2×5 with the venue leg reconstructed from chain**
+(`npx tsx verifier/src/cli.ts --address 0xd41d…2f70 --deploy-block 54088009`, or the tarball
+one-liner with the same flags). No standing position is held — the worker and its unattended
+record stay on v1 by choice. Positioning and
 where this goes: `docs/THESIS.md`. Build invariants for humans and AI agents: `AGENTS.md`; live
 state: `docs/NOW.md`; deferred items: `TODOS.md`.
 
