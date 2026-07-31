@@ -66,6 +66,13 @@ export interface AuditBlock {
   version?: string;
 }
 
+/** One realized day on the ForecastCone's history line: the company balance that day. */
+export interface BalancePointDto {
+  /** YYYY-MM-DD. */
+  date: string;
+  companyBalanceUsdc: string;
+}
+
 /** GET /api/events → everything the page renders. `mandate` is null when the RPC read failed (soft state). */
 export interface EventsResponse {
   agentAddress: string;
@@ -91,6 +98,12 @@ export interface EventsResponse {
   };
   mandate: MandateSnapshotDto | null;
   latestForecast: ForecastSnapshotDto | null;
+  /**
+   * Additive: realized company balance per day, left of the forecast's asOf — the ForecastCone's
+   * solid history line. Present in the ?demo=90d replay (sim ticks carry it); absent from the live
+   * worker feed, where the cone renders forward-only exactly as before.
+   */
+  history?: BalancePointDto[];
   events: EventLogRecord[];
   /** Nightly machine-audit verdict (spliced by the proxy from the audit-log ref); absent if unreachable. */
   audit?: AuditBlock | null;

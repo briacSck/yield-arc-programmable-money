@@ -340,9 +340,14 @@ function Screen({
       {/* The ledger horizon */}
       <section className="section">
         <div className="section__head">
-          {/* "Recent", not "every": the cone is forward-looking and only carries markers near its
-              asOf window — claiming the full history here would overclaim what the chart shows. */}
-          <h2>30-day cash horizon — P10–P90, safe floor, and the agent&apos;s recent moves</h2>
+          {/* The header must state exactly what the chart shows in THIS mode: the demo replay now
+              draws the full realized quarter + the horizon; live mode is still forward-looking
+              with only recent markers. One wrong word here lands on camera. */}
+          <h2>
+            {demo
+              ? 'The quarter so far, then the 30-day horizon — realized cash, P10–P90, safe floor, every move'
+              : "30-day cash horizon — P10–P90, safe floor, and the agent's recent moves"}
+          </h2>
           <span className="eyebrow">
             {demo
               ? data.latestForecast
@@ -359,6 +364,7 @@ function Screen({
           moves={moves}
           revoked={revoked}
           revokedAt={revokedAt}
+          history={data.history ?? null}
         />
       </section>
 

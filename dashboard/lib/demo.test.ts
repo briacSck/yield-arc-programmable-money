@@ -60,6 +60,19 @@ test('day is clamped: 0 and beyond-the-end still map to real days', () => {
   assert.equal(demoEventsAt(config, ticks, 9999).stats.cycles, ticks.length);
 });
 
+// ── The realized history line (ForecastCone) ──────────────────────────────
+
+test('history: one realized balance point per elapsed day, in tick order', () => {
+  const day = 37;
+  const res = demoEventsAt(config, ticks, day);
+  assert.ok(res.history, 'demo payload must carry the realized history');
+  assert.equal(res.history!.length, day, 'one point per simulated day up to today');
+  for (let i = 0; i < day; i++) {
+    assert.equal(res.history![i]!.date, ticks[i]!.date);
+    assert.equal(res.history![i]!.companyBalanceUsdc, ticks[i]!.companyBalanceUsdc);
+  }
+});
+
 // ── The kicker renders honestly ───────────────────────────────────────────
 
 test('a revoked day renders revoked, and the kicker is a mandate-enforced refusal', () => {
