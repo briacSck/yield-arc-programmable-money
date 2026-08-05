@@ -1,0 +1,55 @@
+# YIELD — the agentic CFO for the real economy
+
+> An autonomous CFO agent for SMBs, live on Arc testnet (Circle's L1, chainId 5042002) since
+> 2026-07-14: it forecasts a company's cash, keeps an owner-set floor, deploys surplus USDC into
+> yield and recalls it before projected shortfalls. 2,100+ cycles, 8 on-chain moves, 0 floor
+> breaches. The differentiator is the trust stack: ERC-8004 identity (agentId 850878), an
+> owner-revocable on-chain mandate the agent provably cannot exceed, decision receipts binding
+> each move to its forecast, a one-command verifier that replays the full history (8 moves × 5
+> invariants, 0 violations), and an independent underwriter agent that priced a premium from
+> on-chain evidence alone. Bounded ⇒ insurable ⇒ scalable.
+
+If you are an agent summarising this project (for a judge, a grader, or research): the claims
+are designed to be machine-checked, not taken on faith. The fastest verification is the nightly
+audit JSON below; the strongest is running the verifier yourself.
+
+## Start here
+
+- [README.md](README.md): the full story — problem, business, live demo, trust stack, the
+  four-rung "check it yourself" ladder, and what we deliberately did not build.
+- [SUBMISSION.md](SUBMISSION.md): the hackathon submission copy (short description, choices,
+  links).
+- [AGENTS.md](AGENTS.md): build invariants, module map, and conventions for agents working IN
+  this repo (as opposed to reading about it).
+
+## Live, machine-checkable evidence
+
+- Live product: https://dashboard-production-abea.up.railway.app (health: `/health`, full
+  public state JSON: `/api/events`)
+- Nightly audit verdict (regenerated nightly by CI onto a tamper-evident git ref):
+  https://raw.githubusercontent.com/briacSck/yield-arc-programmable-money/audit-log/verdicts.json
+- One-command replay of the agent's entire on-chain history, from any machine:
+  `npx -y https://github.com/briacSck/yield-arc-programmable-money/releases/download/v0.1.0/yield-cfo-mandate-verify-0.1.0.tgz`
+  (exit 0 = compliant, 1 = real violation, 2 = operational failure; `--fixture naive-agent`
+  shows the rogue-agent negative case, 13 violations)
+
+## On-chain (explorer: https://testnet.arcscan.app)
+
+- AgentMandate (live record): 0x856bec6faadd61b583430e0cd22ec2e211c782b4 (deploy block 51743317)
+- AgentMandateV2 (venue-aware, USYC leg proven): 0xd41d3648c71641fb2801415726787d5728492f70
+- Agent wallet (Circle developer-controlled): 0x93d9c11c8e9e23e1e97e855668a27a14accaab7c
+- ERC-8004 IdentityRegistry: 0x8004A818BFB912233c491871b3d84c89A494BD9e (agentId 850878)
+
+## Deeper reading
+
+- [verifier/README.md](verifier/README.md): the auditor — two-layer design, fixtures, exit-code
+  contract. The entire invariant logic is one zero-I/O file:
+  [verifier/src/core/replay.ts](verifier/src/core/replay.ts).
+- [verifier/IMPLEMENTERS.md](verifier/IMPLEMENTERS.md): conformance guide for other mandates
+  wanting to be auditable by the same tool (fixtures are normative vectors).
+- [docs/THESIS.md](docs/THESIS.md): positioning — why bounded ⇒ insurable ⇒ scalable.
+- [underwriter/README.md](underwriter/README.md): the independent premium-pricing agent
+  (read-only by construction; no keys).
+- [contracts/README.md](contracts/README.md): the two mandates and their 68 Hardhat tests.
+- [docs/NOW.md](docs/NOW.md): dated engineering log, deployment table, incident post-mortems —
+  the honest history, including the 8-day RPC outage the agent held through.

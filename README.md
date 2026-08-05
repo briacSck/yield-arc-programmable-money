@@ -39,6 +39,9 @@ alert which would have caught it now fires.
      package that does not exist yet and renders as an error at the top of the front page. A missing
      badge costs less than a broken one on a project whose pitch is that its claims check out. -->
 
+- **Demo video (5 min, founder walkthrough):** _link lands here with the final submission_
+  <!-- SUBMISSION TODO(briac): replace with the Loom URL once recorded; same link goes in the
+       hackathon form's video field. Script: SUBMISSION.md points at the beats. -->
 - **Live dashboard:** https://dashboard-production-abea.up.railway.app — every decision, its
   reason sentence, and its on-chain receipt, with explorer links, plus a **machine-audit
   scoreboard**: 5 invariant chips checked nightly by the verifier.
@@ -52,8 +55,9 @@ alert which would have caught it now fires.
   (Circle developer-controlled wallet).
 - **Machine-checked autonomy:** the verifier replays the agent's FULL on-chain history and checks
   every move against the mandate's five invariants (floor / ticket / budget window /
-  post-revocation asymmetry / decision receipts). The live history verifies **COMPLIANT in ~6 s**,
-  and the same tool run against a rogue agent **fails it, 13 violations**. How to run it, offline
+  post-revocation asymmetry / decision receipts). The live history verifies **COMPLIANT in ~6 s**
+  — 8 moves × 5 invariants, 0 violations, closest approach $1 above the floor — and the same
+  tool run against a rogue agent **fails it, 13 violations**. How to run it, offline
   or live: [Check it yourself](#check-it-yourself--four-rungs-offline-first).
 
 Built on: **Circle Wallets** (developer-controlled, MPC) · **Circle Contracts (SCP)** ·
