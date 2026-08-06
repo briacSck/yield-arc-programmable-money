@@ -3,7 +3,7 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "55420524",
+  "scannedThroughBlock": "55589619",
   "compliant": true,
   "totalMoves": 8,
   "source": "chain",
@@ -180,7 +180,7 @@
   ],
   "venue": null,
   "notes": [],
-  "runAt": "2026-08-05T09:47:54.602Z",
+  "runAt": "2026-08-06T09:50:14.399Z",
   "version": "mandate-verify@0.1.0",
   "commit": "103cef8"
 }
