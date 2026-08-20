@@ -3,9 +3,9 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "57763043",
+  "scannedThroughBlock": "57932848",
   "compliant": true,
-  "totalMoves": 10,
+  "totalMoves": 12,
   "source": "chain",
   "closestApproachToFloorUsdc": "636490",
   "invariants": [
@@ -30,14 +30,14 @@
     {
       "key": "asymmetry",
       "status": "PASS",
-      "checks": 10,
-      "detail": "no deposit(s) while revoked; 4 withdraw(s) always allowed"
+      "checks": 12,
+      "detail": "no deposit(s) while revoked; 6 withdraw(s) always allowed"
     },
     {
       "key": "receipt",
       "status": "PASS",
-      "checks": 10,
-      "detail": "10/10 moves' receipts re-derive on-chain"
+      "checks": 12,
+      "detail": "12/12 moves' receipts re-derive on-chain"
     }
   ],
   "moves": [
@@ -210,11 +210,45 @@
         "asymmetry": "PASS",
         "receipt": "PASS"
       }
+    },
+    {
+      "decisionId": "0xf74b45d173a71bd0f2d91af12af5b48848ecf8b64b30938f51b59f85c2a483c1",
+      "txHash": "0xf46508a968ad7182e8f3e0713850b50f915b2adbcbc554a638b3595f939e4837",
+      "kind": "WITHDRAW",
+      "blockNumber": "57877934",
+      "amountUsdc": "1894579",
+      "floorHeadroomUsdc": null,
+      "windowUtilization": null,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
+    },
+    {
+      "decisionId": "0x4597d97791dcf245a4a0f16c3b1f7a038d841727d1a1451b2f0fbd141fb695ec",
+      "txHash": "0x692fe5fd1b6f0de2d5b8cd4b85cf1200f861777bbec39a665b0d3483cf976363",
+      "kind": "WITHDRAW",
+      "blockNumber": "57920395",
+      "amountUsdc": "1894579",
+      "floorHeadroomUsdc": null,
+      "windowUtilization": null,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
     }
   ],
   "venue": null,
   "notes": [],
-  "runAt": "2026-08-19T07:52:57.064Z",
+  "runAt": "2026-08-20T07:55:09.722Z",
   "version": "mandate-verify@0.1.0",
   "commit": "103cef8"
 }
