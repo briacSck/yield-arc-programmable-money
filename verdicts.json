@@ -3,9 +3,9 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "57932848",
+  "scannedThroughBlock": "58102251",
   "compliant": true,
-  "totalMoves": 12,
+  "totalMoves": 13,
   "source": "chain",
   "closestApproachToFloorUsdc": "636490",
   "invariants": [
@@ -30,14 +30,14 @@
     {
       "key": "asymmetry",
       "status": "PASS",
-      "checks": 12,
-      "detail": "no deposit(s) while revoked; 6 withdraw(s) always allowed"
+      "checks": 13,
+      "detail": "no deposit(s) while revoked; 7 withdraw(s) always allowed"
     },
     {
       "key": "receipt",
       "status": "PASS",
-      "checks": 12,
-      "detail": "12/12 moves' receipts re-derive on-chain"
+      "checks": 13,
+      "detail": "13/13 moves' receipts re-derive on-chain"
     }
   ],
   "moves": [
@@ -244,11 +244,28 @@
         "asymmetry": "PASS",
         "receipt": "PASS"
       }
+    },
+    {
+      "decisionId": "0x9c3de32e434a80a11f6ee0f98f21189e7dcaa91ba8904670d37779cd83b2dc0a",
+      "txHash": "0xd35c29daadd57d9ea3de41753b744dc795c4c835121158935da627a50baa86f5",
+      "kind": "WITHDRAW",
+      "blockNumber": "57962851",
+      "amountUsdc": "574352",
+      "floorHeadroomUsdc": null,
+      "windowUtilization": null,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
     }
   ],
   "venue": null,
   "notes": [],
-  "runAt": "2026-08-20T07:55:09.722Z",
+  "runAt": "2026-08-21T07:56:02.995Z",
   "version": "mandate-verify@0.1.0",
   "commit": "103cef8"
 }
