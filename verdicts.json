@@ -3,41 +3,41 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "59148521",
+  "scannedThroughBlock": "59322223",
   "compliant": true,
-  "totalMoves": 13,
+  "totalMoves": 14,
   "source": "chain",
   "closestApproachToFloorUsdc": "636490",
   "invariants": [
     {
       "key": "floor",
       "status": "PASS",
-      "checks": 6,
-      "detail": "6/6 deposits kept the company balance above floor; closest approach $0.63649 above floor"
+      "checks": 7,
+      "detail": "7/7 deposits kept the company balance above floor; closest approach $0.63649 above floor"
     },
     {
       "key": "ticket",
       "status": "PASS",
-      "checks": 6,
-      "detail": "6/6 deposits within the per-ticket cap"
+      "checks": 7,
+      "detail": "7/7 deposits within the per-ticket cap"
     },
     {
       "key": "window",
       "status": "PASS",
-      "checks": 6,
-      "detail": "6/6 deposits within the 24h budget window"
+      "checks": 7,
+      "detail": "7/7 deposits within the 24h budget window"
     },
     {
       "key": "asymmetry",
       "status": "PASS",
-      "checks": 13,
+      "checks": 14,
       "detail": "no deposit(s) while revoked; 7 withdraw(s) always allowed"
     },
     {
       "key": "receipt",
       "status": "PASS",
-      "checks": 13,
-      "detail": "13/13 moves' receipts re-derive on-chain"
+      "checks": 14,
+      "detail": "14/14 moves' receipts re-derive on-chain"
     }
   ],
   "moves": [
@@ -261,11 +261,28 @@
         "asymmetry": "PASS",
         "receipt": "PASS"
       }
+    },
+    {
+      "decisionId": "0x3e046a40f345be8b5a8aeff4e405ae64ef12aefdd0322a205a1911d8da1cf7c4",
+      "txHash": "0x8c61327bf4ad35bcf4a22e7bba9c8af31a2e35556ed608ac0717e61be9c264d5",
+      "kind": "DEPLOY",
+      "blockNumber": "59189752",
+      "amountUsdc": "1530619",
+      "floorHeadroomUsdc": "3469381",
+      "windowUtilization": 0.3061238,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
     }
   ],
   "venue": null,
   "notes": [],
-  "runAt": "2026-08-27T18:16:59.209Z",
+  "runAt": "2026-08-28T19:25:37.849Z",
   "version": "mandate-verify@0.1.0",
   "commit": "103cef8"
 }
