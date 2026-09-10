@@ -3,41 +3,41 @@
   "mandateAddress": "0x856bec6faadd61b583430e0cd22ec2e211c782b4",
   "chainId": 5042002,
   "deployBlock": "51743317",
-  "scannedThroughBlock": "61237133",
+  "scannedThroughBlock": "61395575",
   "compliant": true,
-  "totalMoves": 14,
+  "totalMoves": 16,
   "source": "chain",
   "closestApproachToFloorUsdc": "636490",
   "invariants": [
     {
       "key": "floor",
       "status": "PASS",
-      "checks": 7,
-      "detail": "7/7 deposits kept the company balance above floor; closest approach $0.63649 above floor"
+      "checks": 9,
+      "detail": "9/9 deposits kept the company balance above floor; closest approach $0.63649 above floor"
     },
     {
       "key": "ticket",
       "status": "PASS",
-      "checks": 7,
-      "detail": "7/7 deposits within the per-ticket cap"
+      "checks": 9,
+      "detail": "9/9 deposits within the per-ticket cap"
     },
     {
       "key": "window",
       "status": "PASS",
-      "checks": 7,
-      "detail": "7/7 deposits within the 24h budget window"
+      "checks": 9,
+      "detail": "9/9 deposits within the 24h budget window"
     },
     {
       "key": "asymmetry",
       "status": "PASS",
-      "checks": 14,
+      "checks": 16,
       "detail": "no deposit(s) while revoked; 7 withdraw(s) always allowed"
     },
     {
       "key": "receipt",
       "status": "PASS",
-      "checks": 14,
-      "detail": "14/14 moves' receipts re-derive on-chain"
+      "checks": 16,
+      "detail": "16/16 moves' receipts re-derive on-chain"
     }
   ],
   "moves": [
@@ -278,11 +278,45 @@
         "asymmetry": "PASS",
         "receipt": "PASS"
       }
+    },
+    {
+      "decisionId": "0xb91875acd874f6d7be8e25eee218366bcd9231f1e3db87bf4ba43925a0ba38aa",
+      "txHash": "0xb330f80ff183d9da225cf95ae32fa2ce2bb6fb94bb812ca517dbbd80b0a7a64d",
+      "kind": "DEPLOY",
+      "blockNumber": "61311333",
+      "amountUsdc": "2000000",
+      "floorHeadroomUsdc": "1469381",
+      "windowUtilization": 0.4,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
+    },
+    {
+      "decisionId": "0xcd0daadf352d7d98c8c60b8633904e1d5b7630a585c402fa8562c57597447008",
+      "txHash": "0xf61e59a4d55ce4df613ddb4545431a665b0b2e724aa4796ad3b5f37acf8d45e3",
+      "kind": "DEPLOY",
+      "blockNumber": "61353395",
+      "amountUsdc": "823685",
+      "floorHeadroomUsdc": "645696",
+      "windowUtilization": 0.564737,
+      "receipt": "match",
+      "perInvariant": {
+        "floor": "PASS",
+        "ticket": "PASS",
+        "window": "PASS",
+        "asymmetry": "PASS",
+        "receipt": "PASS"
+      }
     }
   ],
   "venue": null,
   "notes": [],
-  "runAt": "2026-09-09T12:19:41.676Z",
+  "runAt": "2026-09-10T12:13:25.004Z",
   "version": "mandate-verify@0.1.0",
   "commit": "103cef8"
 }
